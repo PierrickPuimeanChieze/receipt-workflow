@@ -1,0 +1,33 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'application'
+
+group = "be.cleitech.shoeboxed"
+version = "1.0.0"
+
+mainClassName = "be.cleitech.shoeboxed.extractor.Main"
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+    maven { url "https://repo.spring.io/snapshot" }
+    maven { url "https://repo.spring.io/milestone" }
+}
+
+
+dependencies {
+    compile 'org.springframework:spring-web:4.2.5.RELEASE' //used for the RestTemplate and UriComponentBuilder classes
+    compile "org.projectlombok:lombok:1.16.8"
+}
+
+
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.12'
+}
