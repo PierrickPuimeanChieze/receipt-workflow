@@ -15,6 +15,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.*;
 import java.net.URL;
+import java.nio.file.FileAlreadyExistsException;
 import java.util.*;
 
 public class Main extends Application {
@@ -133,8 +134,12 @@ public class Main extends Application {
                 if (!subDir.exists()) {
                     subDir.mkdirs();
                 }
+                File destinationFile = new File(subDir, fileName);
+                if (destinationFile.exists()) {
+                    throw new FileAlreadyExistsException(destinationFile.getCanonicalPath());
+                }
                 try (final InputStream in = document.getAttachment().getUrl().openStream();
-                     final FileOutputStream out = new FileOutputStream(new File(subDir, fileName))) {
+                     final FileOutputStream out = new FileOutputStream(destinationFile)) {
                     FileCopyUtils.copy(in, out);
                 }
             }
