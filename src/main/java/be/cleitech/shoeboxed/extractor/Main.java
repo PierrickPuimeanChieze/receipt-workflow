@@ -9,6 +9,7 @@ import javafx.scene.web.WebEvent;
 import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 import org.springframework.http.*;
+import org.springframework.http.converter.json.GsonHttpMessageConverter;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -32,6 +33,15 @@ public class Main extends Application {
     private String[] destinationDirs = {"C:\\Users\\Pierrick\\Google Drive\\Cleitech\\Facturettes\\Test\\",};
     private String noCategoryDir = "noCategoryDir";
     private String redirectUrl = "https://api.shoeboxed.com/v2/explorer/o2c.html";
+    boolean exportLaunched = false;
+
+    public synchronized boolean isExportLaunched() {
+        return exportLaunched;
+    }
+
+    public synchronized void setExportLaunched(boolean exportLaunched) {
+        this.exportLaunched = exportLaunched;
+    }
 
     @Override
     public void init() throws Exception {
@@ -46,7 +56,9 @@ public class Main extends Application {
         usersAccountUri = UriComponentsBuilder.fromUriString("https://api.shoeboxed.com:443/v2/user/");
         documentAccountUri = UriComponentsBuilder.fromUriString("https://api.shoeboxed.com:443/v2/accounts/{accountId}/documents/")
                 .queryParam("limit", 100)
-                .queryParam("category", toSentCategory);
+                .queryParam("category", toSentCategory)
+        .queryParam("trashed",false);
+
 
     }
 
@@ -103,7 +115,13 @@ public class Main extends Application {
     }
 
     private void retrieveAllFile(String accesToken) throws IOException {
+        if(isExportLaunched()) {
+            return;
+        }
+
+        setExportLaunched(true);
         RestTemplate restTemplate = new RestTemplate();
+        restTemplate.getMessageConverters().add(new GsonHttpMessageConverter());
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
         headers.set("Authorization", "Bearer " + accesToken);
@@ -129,12 +147,14 @@ public class Main extends Application {
                     document.getIssued(),
                     document.getTotalInPreferredCurrency().toString().replace('.', ','),
                     extractNotesInfo(document.getNotes()));
+            String subDir = String.format("postDate_%tF/%s", new Date(), extractFirstDestinationCategory(document.getCategories()));
+
             for (String destinationDir : destinationDirs) {
-                File subDir = new File(destinationDir, String.format("sentDate_%tF\\%s", new Date(), extractFirstDestinationCategory(document.getCategories())));
-                if (!subDir.exists()) {
-                    subDir.mkdirs();
+                File subDirTotal = new File(destinationDir, subDir);
+                if (!subDirTotal.exists()) {
+                    subDirTotal.mkdirs();
                 }
-                File destinationFile = new File(subDir, fileName);
+                File destinationFile = new File(subDirTotal, fileName);
                 if (destinationFile.exists()) {
                     throw new FileAlreadyExistsException(destinationFile.getCanonicalPath());
                 }
@@ -143,7 +163,7 @@ public class Main extends Application {
                     FileCopyUtils.copy(in, out);
                 }
             }
-            System.out.println(fileName);
+            System.out.println(subDir+"/"+fileName);
         }
     }
 
@@ -166,7 +186,7 @@ public class Main extends Application {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        final String receiptType = notesP.getProperty("receiptType");
+        final String receiptType = notesP.getProperty("type");
         if (receiptType == null) {
             return "";
         }

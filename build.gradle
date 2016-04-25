@@ -24,6 +24,8 @@ repositories {
 dependencies {
     compile 'org.springframework:spring-web:4.2.5.RELEASE' //used for the RestTemplate and UriComponentBuilder classes
     compile "org.projectlombok:lombok:1.16.8"
+    compile 'com.google.code.gson:gson:2.6.2'
+
 }
 
 
