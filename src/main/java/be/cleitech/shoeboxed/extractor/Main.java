@@ -17,6 +17,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.io.*;
 import java.net.URL;
 import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 public class Main extends Application {
@@ -33,6 +35,7 @@ public class Main extends Application {
     private String[] destinationDirs = {"C:\\Users\\Pierrick\\Google Drive\\Cleitech\\Facturettes\\Test\\",};
     private String noCategoryDir = "noCategoryDir";
     private String redirectUrl = "https://api.shoeboxed.com/v2/explorer/o2c.html";
+    private final int maxIndexation = 150;
     boolean exportLaunched = false;
 
     public synchronized boolean isExportLaunched() {
@@ -57,7 +60,7 @@ public class Main extends Application {
         documentAccountUri = UriComponentsBuilder.fromUriString("https://api.shoeboxed.com:443/v2/accounts/{accountId}/documents/")
                 .queryParam("limit", 100)
                 .queryParam("category", toSentCategory)
-        .queryParam("trashed",false);
+                .queryParam("trashed", false);
 
 
     }
@@ -115,7 +118,7 @@ public class Main extends Application {
     }
 
     private void retrieveAllFile(String accesToken) throws IOException {
-        if(isExportLaunched()) {
+        if (isExportLaunched()) {
             return;
         }
 
@@ -142,9 +145,9 @@ public class Main extends Application {
         for (Document document : documents) {
 
 
-            String fileName = String.format("%s_%tF_%s%s.pdf",
-                    document.getVendor().replaceAll(" ", ""),
+            String fileName = String.format("%tF_%s_%s%s.pdf",
                     document.getIssued(),
+                    document.getVendor().replaceAll(" ", ""),
                     document.getTotalInPreferredCurrency().toString().replace('.', ','),
                     extractNotesInfo(document.getNotes()));
             String subDir = String.format("postDate_%tF/%s", new Date(), extractFirstDestinationCategory(document.getCategories()));
@@ -154,17 +157,38 @@ public class Main extends Application {
                 if (!subDirTotal.exists()) {
                     subDirTotal.mkdirs();
                 }
-                File destinationFile = new File(subDirTotal, fileName);
-                if (destinationFile.exists()) {
-                    throw new FileAlreadyExistsException(destinationFile.getCanonicalPath());
-                }
+
+                File destinationFile = createDestinationFile(fileName, subDirTotal, null);
                 try (final InputStream in = document.getAttachment().getUrl().openStream();
                      final FileOutputStream out = new FileOutputStream(destinationFile)) {
                     FileCopyUtils.copy(in, out);
                 }
+                System.out.println(destinationFile.toPath());
+
             }
-            System.out.println(subDir+"/"+fileName);
         }
+    }
+
+    private File createDestinationFile(String fileName, File subDirTotal, Integer index) throws IOException {
+        String indexedFileName = fileName;
+        int nextIndex;
+        if (index != null) {
+            if (index > maxIndexation) {
+                throw new FileNotFoundException(fileName + " plus indexation");
+            }
+            int extensionsIndex = fileName.lastIndexOf(".");
+            String extension = fileName.substring(extensionsIndex);
+
+            indexedFileName = fileName.substring(0, extensionsIndex) + "_(" + index+")"+extension;
+            nextIndex = index + 1;
+        } else {
+            nextIndex = 1;
+        }
+        File destinationFile = new File(subDirTotal, indexedFileName);
+        if (destinationFile.exists()) {
+            return createDestinationFile(fileName, subDirTotal, nextIndex);
+        }
+        return destinationFile;
     }
 
     private String extractFirstDestinationCategory(String[] categories) {
