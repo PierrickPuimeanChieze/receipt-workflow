@@ -1,4 +1,4 @@
-package be.cleitech.shoeboxed.extractor;
+package be.cleitech.shoeboxed.extractor.domain;
 
 import lombok.Data;
 

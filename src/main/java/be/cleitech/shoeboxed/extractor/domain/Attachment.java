@@ -1,4 +1,4 @@
-package be.cleitech.shoeboxed.extractor;
+package be.cleitech.shoeboxed.extractor.domain;
 
 import java.net.URL;
 
@@ -7,8 +7,8 @@ import java.net.URL;
  */
 public class Attachment {
 
-    public String name;
-    public URL url;
+    private String name;
+    private  URL url;
 
     public String getName() {
         return name;
@@ -24,5 +24,13 @@ public class Attachment {
 
     public void setUrl(URL url) {
         this.url = url;
+    }
+
+    @Override
+    public String toString() {
+        return "Attachment{" +
+                "name='" + name + '\'' +
+                ", url=" + url +
+                '}';
     }
 }

@@ -1,11 +1,11 @@
-package be.cleitech.shoeboxed.extractor;
+package be.cleitech.shoeboxed.extractor.domain;
 
 /**
  * @author Pierrick Puimean-Chieze on 23-04-16.
  */
 public class Documents {
 
-    Document[] documents;
+    private Document[] documents;
 
     public Document[] getDocuments() {
         return documents;

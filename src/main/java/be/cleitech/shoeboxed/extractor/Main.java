@@ -1,5 +1,8 @@
 package be.cleitech.shoeboxed.extractor;
 
+import be.cleitech.shoeboxed.extractor.domain.Document;
+import be.cleitech.shoeboxed.extractor.domain.Documents;
+import be.cleitech.shoeboxed.extractor.domain.User;
 import javafx.application.Application;
 import javafx.event.EventHandler;
 import javafx.scene.Scene;
@@ -16,15 +19,12 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.*;
 import java.net.URL;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 
 public class Main extends Application {
 
-    static final String RESPONSE_TYPE = "token";
-    static final String SCOPE = "all";
+    private static final String RESPONSE_TYPE = "token";
+    private static final String SCOPE = "all";
 
     private Scene scene;
     private UriComponentsBuilder usersAccountUri;
@@ -38,11 +38,11 @@ public class Main extends Application {
     private final int maxIndexation = 150;
     boolean exportLaunched = false;
 
-    public synchronized boolean isExportLaunched() {
+    private  synchronized boolean isExportLaunched() {
         return exportLaunched;
     }
 
-    public synchronized void setExportLaunched(boolean exportLaunched) {
+    private  synchronized void setExportLaunched(boolean exportLaunched) {
         this.exportLaunched = exportLaunched;
     }
 
@@ -59,6 +59,7 @@ public class Main extends Application {
         usersAccountUri = UriComponentsBuilder.fromUriString("https://api.shoeboxed.com:443/v2/user/");
         documentAccountUri = UriComponentsBuilder.fromUriString("https://api.shoeboxed.com:443/v2/accounts/{accountId}/documents/")
                 .queryParam("limit", 100)
+                .queryParam("type", "receipt")
                 .queryParam("category", toSentCategory)
                 .queryParam("trashed", false);
 
@@ -84,27 +85,26 @@ public class Main extends Application {
 //        webEngine.
         borderPane.setCenter(browser);
 
-        webEngine.setOnStatusChanged(new EventHandler<WebEvent<String>>() {
-            public void handle(WebEvent<String> event) {
-                if (event.getSource() instanceof WebEngine) {
-                    WebEngine we = (WebEngine) event.getSource();
-                    String location = we.getLocation();
-                    if (location.startsWith(redirectUrl) && location.contains("access_token")) {
-                        try {
-                            URL url = new URL(location);
-                            String[] params = url.getRef().split("&");
-                            Map<String, String> map = new HashMap<String, String>();
-                            for (String param : params) {
-                                String name = param.split("=")[0];
-                                String value = param.split("=")[1];
-                                map.put(name, value);
-                            }
-                            stage.hide();
-                            retrieveAllFile(map.get("access_token"));
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            throw new RuntimeException(e);
+        webEngine.setOnStatusChanged(event -> {
+            if (event.getSource() instanceof WebEngine) {
+                WebEngine we = (WebEngine) event.getSource();
+                String location = we.getLocation();
+
+                if (location.startsWith(redirectUrl) && location.contains("access_token")) {
+                    try {
+                        URL url1 = new URL(location);
+                        String[] params = url1.getRef().split("&");
+                        Map<String, String> map = new HashMap<>();
+                        for (String param : params) {
+                            String name = param.split("=")[0];
+                            String value = param.split("=")[1];
+                            map.put(name, value);
                         }
+                        stage.hide();
+                        retrieveAllFile(map.get("access_token"));
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        throw new RuntimeException(e);
                     }
                 }
             }
@@ -126,7 +126,7 @@ public class Main extends Application {
         RestTemplate restTemplate = new RestTemplate();
         restTemplate.getMessageConverters().add(new GsonHttpMessageConverter());
         HttpHeaders headers = new HttpHeaders();
-        headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         headers.set("Authorization", "Bearer " + accesToken);
         HttpEntity entity = new HttpEntity(headers);
 
@@ -145,26 +145,31 @@ public class Main extends Application {
         for (Document document : documents) {
 
 
-            String fileName = String.format("%tF_%s_%s%s.pdf",
-                    document.getIssued(),
-                    document.getVendor().replaceAll(" ", ""),
-                    document.getTotalInPreferredCurrency().toString().replace('.', ','),
-                    extractNotesInfo(document.getNotes()));
-            String subDir = String.format("postDate_%tF/%s", new Date(), extractFirstDestinationCategory(document.getCategories()));
+            try {
+                String fileName = String.format("%tF_%s_%s%s.pdf",
+                        document.getIssued(),
+                        document.getVendor().replaceAll(" ", ""),
+                        document.getTotalInPreferredCurrency().toString().replace('.', ','),
+                        extractNotesInfo(document.getNotes()));
+                String subDir = String.format("postDate_%tF/%s", new Date(), extractFirstDestinationCategory(document.getCategories()));
 
-            for (String destinationDir : destinationDirs) {
-                File subDirTotal = new File(destinationDir, subDir);
-                if (!subDirTotal.exists()) {
-                    subDirTotal.mkdirs();
+                for (String destinationDir : destinationDirs) {
+                    File subDirTotal = new File(destinationDir, subDir);
+                    if (!subDirTotal.exists()) {
+                        subDirTotal.mkdirs();
+                    }
+
+                    File destinationFile = createDestinationFile(fileName, subDirTotal, null);
+                    try (final InputStream in = document.getAttachment().getUrl().openStream();
+                         final FileOutputStream out = new FileOutputStream(destinationFile)) {
+                        FileCopyUtils.copy(in, out);
+                    }
+                    System.out.println(destinationFile.toPath());
                 }
 
-                File destinationFile = createDestinationFile(fileName, subDirTotal, null);
-                try (final InputStream in = document.getAttachment().getUrl().openStream();
-                     final FileOutputStream out = new FileOutputStream(destinationFile)) {
-                    FileCopyUtils.copy(in, out);
-                }
-                System.out.println(destinationFile.toPath());
-
+            } catch (Exception e) {
+                System.err.println("Error when trying to recover document "+document);
+                throw e;
             }
         }
     }
