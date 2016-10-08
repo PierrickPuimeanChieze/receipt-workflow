@@ -35,8 +35,10 @@ public class Main extends Application {
     private String[] destinationDirs = {"C:\\Users\\Pierrick\\Google Drive\\Cleitech\\Facturettes\\Test\\",};
     private String noCategoryDir = "noCategoryDir";
     private String redirectUrl = "https://api.shoeboxed.com/v2/explorer/o2c.html";
+    private String[] mainCategories = new String[]{"Diving"};
     private final int maxIndexation = 150;
     boolean exportLaunched = false;
+
 
     private  synchronized boolean isExportLaunched() {
         return exportLaunched;
@@ -117,7 +119,7 @@ public class Main extends Application {
         stage.show();
     }
 
-    private void retrieveAllFile(String accesToken) throws IOException {
+    private void retrieveAllFile(String accesToken) throws IOException, MultipleMainCategoriesException {
         if (isExportLaunched()) {
             return;
         }
@@ -151,7 +153,14 @@ public class Main extends Application {
                         document.getVendor().replaceAll(" ", ""),
                         document.getTotalInPreferredCurrency().toString().replace('.', ','),
                         extractNotesInfo(document.getNotes()));
-                String subDir = String.format("postDate_%tF/%s", new Date(), extractFirstDestinationCategory(document.getCategories()));
+
+                String subDir ;
+                String mainCategory = extractMainCategory(document.getCategories());
+                if (mainCategory != null) {
+                    subDir = String.format("postDate_%tF/%s/%s", new Date(), mainCategory, extractFirstDestinationCategory(document.getCategories()));
+                } else {
+                    subDir = String.format("postDate_%tF/%s", new Date(), extractFirstDestinationCategory(document.getCategories()));
+                }
 
                 for (String destinationDir : destinationDirs) {
                     File subDirTotal = new File(destinationDir, subDir);
@@ -167,12 +176,17 @@ public class Main extends Application {
                     System.out.println(destinationFile.toPath());
                 }
 
-            } catch (Exception e) {
+            }
+            catch (MultipleMainCategoriesException e) {
+                throw new MultipleMainCategoriesException("document "+document+" has Multiple Main Categories. See root cause for detail", e);
+            }
+            catch (IOException e) {
                 System.err.println("Error when trying to recover document "+document);
                 throw e;
             }
         }
     }
+
 
     private File createDestinationFile(String fileName, File subDirTotal, Integer index) throws IOException {
         String indexedFileName = fileName;
@@ -196,13 +210,42 @@ public class Main extends Application {
         return destinationFile;
     }
 
+    private String extractMainCategory(String[] categories) throws MultipleMainCategoriesException {
+        String mainCategoryToReturn = null;
+        for (String category : categories) {
+            for (String mainCategory : mainCategories) {
+                if (mainCategory.equalsIgnoreCase(category)) {
+                    if (mainCategoryToReturn != null) {
+                        throw new MultipleMainCategoriesException(mainCategory+","+mainCategoryToReturn);
+                    }
+                    mainCategoryToReturn = mainCategory;
+                }
+            }
+        }
+        return mainCategoryToReturn;
+    }
+
+
+
     private String extractFirstDestinationCategory(String[] categories) {
         for (String category : categories) {
             if (!category.equals(this.toSentCategory)) {
+                if (mainCategoriesContains(category)) {
+                    continue;
+                }
                 return category;
             }
         }
         return noCategoryDir;
+    }
+
+    private boolean mainCategoriesContains(String category) {
+        for (String mainCategory : mainCategories) {
+            if (mainCategory.equalsIgnoreCase(category)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String extractNotesInfo(String notes) {
