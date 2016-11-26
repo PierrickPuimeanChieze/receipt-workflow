@@ -145,13 +145,12 @@ public class Main extends Application {
         for (Document document : documents) {
 
 
-            try {
-                String fileName = String.format("%tF_%s_%s%s.pdf",
-                        document.getIssued(),
-                        document.getVendor().replaceAll(" ", ""),
-                        document.getTotalInPreferredCurrency().toString().replace('.', ','),
-                        extractNotesInfo(document.getNotes()));
-                String subDir = String.format("postDate_%tF/%s", new Date(), extractFirstDestinationCategory(document.getCategories()));
+            String fileName = String.format("%s_%tF_%s%s.pdf",
+                    document.getVendor().replaceAll(" ", ""),
+                    document.getIssued(),
+                    document.getTotalInPreferredCurrency().toString().replace('.', ','),
+                    extractNotesInfo(document.getNotes()));
+            String subDir = String.format("postDate_%tF/%s", new Date(), extractFirstDestinationCategory(document.getCategories()));
 
                 for (String destinationDir : destinationDirs) {
                     File subDirTotal = new File(destinationDir, subDir);
