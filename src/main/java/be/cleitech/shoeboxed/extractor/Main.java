@@ -13,6 +13,7 @@ import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 import org.springframework.http.*;
 import org.springframework.http.converter.json.GsonHttpMessageConverter;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -39,7 +40,7 @@ public class Main extends Application {
     private final int maxIndexation = 150;
     boolean exportLaunched = false;
 
-
+    ArrayList<String> fileList = new ArrayList<>();
     private  synchronized boolean isExportLaunched() {
         return exportLaunched;
     }
@@ -169,11 +170,14 @@ public class Main extends Application {
                     }
 
                     File destinationFile = createDestinationFile(fileName, subDirTotal, null);
+
+
                     try (final InputStream in = document.getAttachment().getUrl().openStream();
                          final FileOutputStream out = new FileOutputStream(destinationFile)) {
+                        System.out.println("retrieving file "+destinationFile);
                         FileCopyUtils.copy(in, out);
                     }
-                    System.out.println(destinationFile.toPath());
+                    manageLog(destinationFile);
                 }
 
             }
@@ -184,7 +188,24 @@ public class Main extends Application {
                 System.err.println("Error when trying to recover document "+document);
                 throw e;
             }
+
+            Collections.sort(fileList);
+            System.out.println("Final ordered list : ");
+            for (String s : fileList) {
+                System.out.println(s);
+            }
         }
+    }
+
+    private void manageLog(File destinationFile) {
+        String startingLogEntry = destinationFile.toPath().toString();
+        for (String destinationDir : destinationDirs) {
+            if (startingLogEntry.startsWith(destinationDir)) {
+                fileList.add(startingLogEntry.substring(destinationDir.length()));
+                return;
+            }
+        }
+        fileList.add(startingLogEntry);
     }
 
 
