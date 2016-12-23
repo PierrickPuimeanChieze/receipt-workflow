@@ -7,19 +7,31 @@ import javafx.application.Application;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.concurrent.Worker;
+import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
 import javafx.stage.Stage;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.*;
+import org.springframework.http.converter.FormHttpMessageConverter;
+import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.GsonHttpMessageConverter;
 import org.springframework.util.FileCopyUtils;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.*;
+import java.net.URI;
 import java.net.URL;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 public class Main extends Application {
@@ -27,31 +39,26 @@ public class Main extends Application {
     private static final String RESPONSE_TYPE = "token";
     private static final String SCOPE = "all";
 
-    private Scene scene;
     private UriComponentsBuilder usersAccountUri;
-    private UriComponentsBuilder documentAccountUri;
+    private UriComponentsBuilder getDocumentsAccountUri;
 
     private String toSentCategory = "to send";
     private String clientId = "4dfe5b6b1de54f9d83c24d2ea9ea76d8";
     private String[] destinationDirs = {"C:\\Users\\Pierrick\\Google Drive\\Cleitech\\Facturettes\\Test\\",};
     private String noCategoryDir = "noCategoryDir";
     private String redirectUrl = "https://api.shoeboxed.com/v2/explorer/o2c.html";
+    private Path toUploadDir = FileSystems.getDefault().getPath("C:\\Users\\Pierrick\\Google Drive\\Cleitech\\to_upload");
+    private Path uploadedDir = FileSystems.getDefault().getPath("C:\\Users\\Pierrick\\Google Drive\\Cleitech\\uploaded");
+
+    private String accessToken;
     /**
      * The "main" categories
      **/
     private String[] mainCategories = new String[]{"Diving"};
     private final int maxIndexation = 150;
-    private boolean exportLaunched = false;
 
     private ArrayList<String> fileList = new ArrayList<>();
 
-    private synchronized boolean isExportLaunched() {
-        return exportLaunched;
-    }
-
-    private synchronized void setExportLaunched(boolean exportLaunched) {
-        this.exportLaunched = exportLaunched;
-    }
 
     @Override
     public void init() throws Exception {
@@ -64,7 +71,7 @@ public class Main extends Application {
         noCategoryDir = properties.getProperty("noCategoryDir");
         redirectUrl = properties.getProperty("redirectUrl");
         usersAccountUri = UriComponentsBuilder.fromUriString("https://api.shoeboxed.com:443/v2/user/");
-        documentAccountUri = UriComponentsBuilder.fromUriString("https://api.shoeboxed.com:443/v2/accounts/{accountId}/documents/")
+        getDocumentsAccountUri = UriComponentsBuilder.fromUriString("https://api.shoeboxed.com:443/v2/accounts/{accountId}/documents/")
                 .queryParam("limit", 100)
                 .queryParam("type", "receipt")
                 .queryParam("category", toSentCategory)
@@ -73,8 +80,83 @@ public class Main extends Application {
 
     }
 
-    @Override
-    public void start(final Stage stage) throws Exception {
+    @FXML
+    public void startRetrievingProcessed() {
+
+        if (accessToken == null) {
+            accessToken = retrieveAccessToken();
+        }
+        try {
+            Document[] treatedDoc = retrieveAllFile(accessToken);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (MultipleMainCategoriesException e) {
+            e.printStackTrace();
+        }
+
+
+    }
+
+    @FXML
+    public void uploadDocuments() {
+        if (accessToken == null) {
+            accessToken = retrieveAccessToken();
+        }
+
+        startUploadingProcess();
+    }
+
+    /**
+     * Upload to shoeboxed every file in {@link #toUploadDir} and copy a backup in {@link #uploadedDir}
+     */
+    private void startUploadingProcess() {
+        String accountId = "1809343498";
+        final UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromUriString("https://api.shoeboxed.com/v2/accounts/{accountId}/documents/?");
+        String url = uriComponentsBuilder.buildAndExpand(accountId).toUriString();
+        RestTemplate restTemplate = new RestTemplate();
+        HttpMessageConverter formHttpMessageConverter = new FormHttpMessageConverter();
+        restTemplate.getMessageConverters().add(formHttpMessageConverter);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        headers.set("Authorization", "Bearer " + accessToken);
+
+
+        try {
+            Files.list(toUploadDir)
+                    .filter(path -> path.getFileName().toString().endsWith(".pdf"))
+                    .forEach(path -> {
+                                final File file = path.toFile();
+                                Resource resourceToUpload = new FileSystemResource(file);
+                                MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+                                body.add("attachment", resourceToUpload);
+                                body.add("document", "{ \"processingState\": \"PROCESSED\", \"type\":\"receipt\"}");
+                                HttpEntity entity = new HttpEntity<>(body, headers);
+                                final ResponseEntity<String> stringResponseEntity = restTemplate.postForEntity(url, entity, String.class);
+                                final HttpStatus statusCode = stringResponseEntity.getStatusCode();
+                                System.out.println(stringResponseEntity.getBody());
+
+                                if (statusCode == HttpStatus.CREATED) {
+                                    System.out.println(path +" uploaded. Moving it");
+
+                                    final Path dest = uploadedDir.resolve(path.getFileName());
+                                    try {
+                                        Files.move(path, dest);
+                                    } catch (IOException e) {
+                                        System.err.println("unable to move " + path + " to " + dest + " after upload");
+                                        e.printStackTrace();
+                                    }
+                                }
+                            }
+                    );
+        } catch (IOException e) {
+            System.err.println("unable to list files of " + toUploadDir);
+            e.printStackTrace();
+        }
+    }
+
+    private String retrieveAccessToken() {
+        final StringBuilder buffer = new StringBuilder();
         final String url = UriComponentsBuilder.fromPath("https://id.shoeboxed.com/oauth/authorize")
                 .queryParam("client_id", clientId)
                 .queryParam("response_type", RESPONSE_TYPE)
@@ -83,6 +165,7 @@ public class Main extends Application {
                 .queryParam("state", "CRT")
                 .build().toUriString();
 
+        Stage retrievingStage = new Stage();
         BorderPane borderPane = new BorderPane();
 
         WebView browser = new WebView();
@@ -116,8 +199,7 @@ public class Main extends Application {
             if (event.getSource() instanceof WebEngine) {
                 WebEngine we = (WebEngine) event.getSource();
                 String location = we.getLocation();
-
-                if (location.startsWith(redirectUrl) && location.contains("access_token")) {
+                if (location.startsWith(redirectUrl) && location.contains("access_token") && buffer.length() == 0) {
                     try {
                         URL url1 = new URL(location);
                         String[] params = url1.getRef().split("&");
@@ -127,8 +209,9 @@ public class Main extends Application {
                             String value = param.split("=")[1];
                             map.put(name, value);
                         }
-                        stage.hide();
-                        retrieveAllFile(map.get("access_token"));
+                        retrievingStage.close();
+                        String access_token = map.get("access_token");
+                        buffer.append(access_token);
                     } catch (Exception e) {
                         e.printStackTrace();
                         throw new RuntimeException(e);
@@ -137,9 +220,21 @@ public class Main extends Application {
             }
         });
 
+        retrievingStage.setScene(new Scene(borderPane, 1, 1));
+        retrievingStage.showAndWait();
+        return buffer.toString();
+    }
+
+    @Override
+    public void start(final Stage stage) throws Exception {
+
+        final URL resource = getClass().getClassLoader().getResource("main.fxml");
+        FXMLLoader loader = new FXMLLoader(resource);
+        loader.setController(this);
+        BorderPane mainPane = loader.load();
         // create scene
         stage.setTitle("Skydrive");
-        scene = new Scene(borderPane, 750, 500);
+        Scene scene = new Scene(mainPane, 750, 500);
         stage.setScene(scene);
         stage.show();
     }
@@ -164,12 +259,8 @@ public class Main extends Application {
      * @throws IOException                     Problem when reading or writing a file
      * @throws MultipleMainCategoriesException If one of the files has multiple Main category
      */
-    private void retrieveAllFile(String accesToken) throws IOException, MultipleMainCategoriesException {
-        if (isExportLaunched()) {
-            return;
-        }
+    private Document[] retrieveAllFile(String accesToken) throws IOException, MultipleMainCategoriesException {
 
-        setExportLaunched(true);
 
         //Rest template configuration
         RestTemplate restTemplate = new RestTemplate();
@@ -188,7 +279,8 @@ public class Main extends Application {
         String id = body.getAccounts()[0].getId();
 
         //We retrieve the documents metadata
-        final ResponseEntity<Documents> documentsResponse = restTemplate.exchange(documentAccountUri.buildAndExpand(id).toUri(), HttpMethod.GET, entity, Documents.class);
+        final URI url = getDocumentsAccountUri.buildAndExpand(id).toUri();
+        final ResponseEntity<Documents> documentsResponse = restTemplate.exchange(url, HttpMethod.GET, entity, Documents.class);
 
         final Document[] documents = documentsResponse.getBody().getDocuments();
 
@@ -199,7 +291,7 @@ public class Main extends Application {
                 String fileName = String.format("%tF_%s_%s%s.pdf",
                         document.getIssued(),
                         document.getVendor().replaceAll(" ", ""),
-                        document.getTotalInPreferredCurrency().toString().replace('.', ','),
+                        document.getTotal().toString().replace('.', ','),
                         extractNotesInfo(document.getNotes()));
 
                 String subDir;
@@ -240,6 +332,7 @@ public class Main extends Application {
                 System.out.println(s);
             }
         }
+        return documents;
     }
 
     private void manageLog(File destinationFile) {
