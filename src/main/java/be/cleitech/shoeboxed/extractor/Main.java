@@ -4,16 +4,16 @@ import be.cleitech.shoeboxed.extractor.domain.Document;
 import be.cleitech.shoeboxed.extractor.domain.Documents;
 import be.cleitech.shoeboxed.extractor.domain.User;
 import javafx.application.Application;
-import javafx.event.EventHandler;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
+import javafx.concurrent.Worker;
 import javafx.scene.Scene;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.web.WebEngine;
-import javafx.scene.web.WebEvent;
 import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 import org.springframework.http.*;
 import org.springframework.http.converter.json.GsonHttpMessageConverter;
-import org.springframework.util.CollectionUtils;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -36,16 +36,20 @@ public class Main extends Application {
     private String[] destinationDirs = {"C:\\Users\\Pierrick\\Google Drive\\Cleitech\\Facturettes\\Test\\",};
     private String noCategoryDir = "noCategoryDir";
     private String redirectUrl = "https://api.shoeboxed.com/v2/explorer/o2c.html";
+    /**
+     * The "main" categories
+     **/
     private String[] mainCategories = new String[]{"Diving"};
     private final int maxIndexation = 150;
-    boolean exportLaunched = false;
+    private boolean exportLaunched = false;
 
-    ArrayList<String> fileList = new ArrayList<>();
-    private  synchronized boolean isExportLaunched() {
+    private ArrayList<String> fileList = new ArrayList<>();
+
+    private synchronized boolean isExportLaunched() {
         return exportLaunched;
     }
 
-    private  synchronized void setExportLaunched(boolean exportLaunched) {
+    private synchronized void setExportLaunched(boolean exportLaunched) {
         this.exportLaunched = exportLaunched;
     }
 
@@ -83,9 +87,29 @@ public class Main extends Application {
 
         WebView browser = new WebView();
         WebEngine webEngine = browser.getEngine();
+        webEngine.getLoadWorker().stateProperty().addListener(new ChangeListener<Worker.State>() {
+            int succededCount = 0;
 
+            @Override
+            public void changed(ObservableValue<? extends Worker.State> observable, Worker.State oldState, Worker.State newState) {
+                if (newState == Worker.State.SUCCEEDED) {
+                    succededCount++;
+                    switch (succededCount) {
+                        case 1:
+                            //First screen : we run the auto log
+                            String loginScript = loadScript("loginScript.js");
+                            webEngine.executeScript(loginScript);
+                            break;
+                        case 2:
+                            String autoApproveScript = loadScript("autoApprove.js");
+                            webEngine.executeScript(autoApproveScript);
+                            break;
+                    }
+
+                }
+            }
+        });
         webEngine.load(url);
-//        webEngine.
         borderPane.setCenter(browser);
 
         webEngine.setOnStatusChanged(event -> {
@@ -120,12 +144,34 @@ public class Main extends Application {
         stage.show();
     }
 
+    /**
+     * This method load the script content, provided the name of the file
+     *
+     * @param jsFile name of the file
+     * @return content of the script
+     */
+    private String loadScript(String jsFile) {
+        final InputStream jsFileStream = getClass().getClassLoader().getResourceAsStream(jsFile);
+        return new Scanner(jsFileStream, "UTF-8").useDelimiter("\\A").next();
+
+
+    }
+
+    /**
+     * Retrieve and store the files from the API
+     *
+     * @param accesToken the access token to use for connection
+     * @throws IOException                     Problem when reading or writing a file
+     * @throws MultipleMainCategoriesException If one of the files has multiple Main category
+     */
     private void retrieveAllFile(String accesToken) throws IOException, MultipleMainCategoriesException {
         if (isExportLaunched()) {
             return;
         }
 
         setExportLaunched(true);
+
+        //Rest template configuration
         RestTemplate restTemplate = new RestTemplate();
         restTemplate.getMessageConverters().add(new GsonHttpMessageConverter());
         HttpHeaders headers = new HttpHeaders();
@@ -133,14 +179,15 @@ public class Main extends Application {
         headers.set("Authorization", "Bearer " + accesToken);
         HttpEntity entity = new HttpEntity(headers);
 
+        //We retrieve the information about the first account of the user
         final ResponseEntity<User> exchange =
                 restTemplate.exchange(usersAccountUri.build().toUri(),
                         HttpMethod.GET, entity, User.class);
 
         final User body = exchange.getBody();
         String id = body.getAccounts()[0].getId();
-        final ResponseEntity<String> debug = restTemplate.exchange(documentAccountUri.buildAndExpand(id).toUri(), HttpMethod.GET, entity, String.class);
 
+        //We retrieve the documents metadata
         final ResponseEntity<Documents> documentsResponse = restTemplate.exchange(documentAccountUri.buildAndExpand(id).toUri(), HttpMethod.GET, entity, Documents.class);
 
         final Document[] documents = documentsResponse.getBody().getDocuments();
@@ -155,7 +202,7 @@ public class Main extends Application {
                         document.getTotalInPreferredCurrency().toString().replace('.', ','),
                         extractNotesInfo(document.getNotes()));
 
-                String subDir ;
+                String subDir;
                 String mainCategory = extractMainCategory(document.getCategories());
                 if (mainCategory != null) {
                     subDir = String.format("postDate_%tF/%s/%s", new Date(), mainCategory, extractFirstDestinationCategory(document.getCategories()));
@@ -174,18 +221,16 @@ public class Main extends Application {
 
                     try (final InputStream in = document.getAttachment().getUrl().openStream();
                          final FileOutputStream out = new FileOutputStream(destinationFile)) {
-                        System.out.println("retrieving file "+destinationFile);
+                        System.out.println("retrieving file " + destinationFile);
                         FileCopyUtils.copy(in, out);
                     }
                     manageLog(destinationFile);
                 }
 
-            }
-            catch (MultipleMainCategoriesException e) {
-                throw new MultipleMainCategoriesException("document "+document+" has Multiple Main Categories. See root cause for detail", e);
-            }
-            catch (IOException e) {
-                System.err.println("Error when trying to recover document "+document);
+            } catch (MultipleMainCategoriesException e) {
+                throw new MultipleMainCategoriesException("document " + document + " has Multiple Main Categories. See root cause for detail", e);
+            } catch (IOException e) {
+                System.err.println("Error when trying to recover document " + document);
                 throw e;
             }
 
@@ -209,6 +254,15 @@ public class Main extends Application {
     }
 
 
+    /**
+     * Create of an indexed fileName
+     *
+     * @param fileName    file Name
+     * @param subDirTotal final SubDir
+     * @param index       current Index
+     * @return the indexed filename
+     * @throws IOException if a I/O is raised.
+     */
     private File createDestinationFile(String fileName, File subDirTotal, Integer index) throws IOException {
         String indexedFileName = fileName;
         int nextIndex;
@@ -219,7 +273,7 @@ public class Main extends Application {
             int extensionsIndex = fileName.lastIndexOf(".");
             String extension = fileName.substring(extensionsIndex);
 
-            indexedFileName = fileName.substring(0, extensionsIndex) + "_(" + index+")"+extension;
+            indexedFileName = fileName.substring(0, extensionsIndex) + "_(" + index + ")" + extension;
             nextIndex = index + 1;
         } else {
             nextIndex = 1;
@@ -231,13 +285,20 @@ public class Main extends Application {
         return destinationFile;
     }
 
+    /**
+     * Extract the main category from the provided categories
+     *
+     * @param categories the categories
+     * @return <code>null</code> if default (no main cateoory), name of the main category
+     * @throws MultipleMainCategoriesException if multiple main category were found
+     */
     private String extractMainCategory(String[] categories) throws MultipleMainCategoriesException {
         String mainCategoryToReturn = null;
         for (String category : categories) {
             for (String mainCategory : mainCategories) {
                 if (mainCategory.equalsIgnoreCase(category)) {
                     if (mainCategoryToReturn != null) {
-                        throw new MultipleMainCategoriesException(mainCategory+","+mainCategoryToReturn);
+                        throw new MultipleMainCategoriesException(mainCategory + "," + mainCategoryToReturn);
                     }
                     mainCategoryToReturn = mainCategory;
                 }
@@ -247,7 +308,12 @@ public class Main extends Application {
     }
 
 
-
+    /**
+     * Extract eh destination category. Will return the first, non-main, category
+     *
+     * @param categories the categories to parse
+     * @return the firste destination category
+     */
     private String extractFirstDestinationCategory(String[] categories) {
         for (String category : categories) {
             if (!category.equals(this.toSentCategory)) {
@@ -269,6 +335,12 @@ public class Main extends Application {
         return false;
     }
 
+    /**
+     * Parse note info, extract information under type as type=<value>
+     *
+     * @param notes the notes to parse
+     * @return the value associated to key type, or null
+     */
     private String extractNotesInfo(String notes) {
         if (notes == null) {
             return "";
