@@ -1,1 +1,5 @@
-rootProject.name = "shoeboxed-extractor"
+rootProject.name = "shoeboxed-toolsuite"
+include 'shoeboxed-uploader'
+include 'shoeboxed-extractor'
+include 'shoeboxed-common'
+
