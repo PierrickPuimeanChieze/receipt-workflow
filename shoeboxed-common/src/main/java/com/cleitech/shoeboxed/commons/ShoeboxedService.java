@@ -53,6 +53,10 @@ public class ShoeboxedService {
         this.accessToken = retrieveAccessToken();
     }
 
+    /**
+     * Allow to retrieve an acess token
+     * @return the access token to retrieve
+     */
     private String retrieveAccessToken() {
         final StringBuilder buffer = new StringBuilder();
         final String url = UriComponentsBuilder.fromPath("https://id.shoeboxed.com/oauth/authorize")
@@ -117,6 +121,11 @@ public class ShoeboxedService {
         return buffer.toString();
     }
 
+    /**
+     * Allow to upload a document
+     * @param tempFileName the path to thedocument to upload
+     * @return the status of the upload
+     */
     public HttpStatus uploadDocument(Path tempFileName) {
 
         final UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromUriString("https://api.shoeboxed.com/v2/accounts/{accountId}/documents/?");
@@ -144,6 +153,10 @@ public class ShoeboxedService {
         return statusCode;
     }
 
+    /**
+     * Allow to retrieve the first account Id
+     * @return the first account Id
+     */
     private String retrieveAccountId() {
         HttpHeaders headers = new HttpHeaders();
 
@@ -162,7 +175,12 @@ public class ShoeboxedService {
 
     }
 
-    public Document[] retrieveDocumentToSend(String categoryFilter) {
+    /**
+     * Allow to retrieve document
+     * @param categoryFilter the category of the searched document
+     * @return the list of Document
+     */
+    public Document[] retrieveDocument(String categoryFilter) {
 
         UriComponentsBuilder getDocumentsAccountUri = UriComponentsBuilder.fromUriString("https://api.shoeboxed.com:443/v2/accounts/{accountId}/documents/")
                 .queryParam("limit", 100)
@@ -182,35 +200,5 @@ public class ShoeboxedService {
 
         return documentsResponse.getBody().getDocuments();
 
-    }
-
-
-    public void toto(Path fileToUpload) {
-        HttpHeaders headers = new HttpHeaders();
-
-        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-        headers.set("Authorization", "Bearer " + accessToken);
-
-        final java.io.File file = fileToUpload.toFile();
-        Resource resourceToUpload = new FileSystemResource(file);
-        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("attachment", resourceToUpload);
-        body.add("document", "{ \"processingState\": \"PROCESSED\", \"type\":\"receipt\"}");
-        HttpEntity entity = new HttpEntity<>(body, headers);
-        final ResponseEntity<String> stringResponseEntity = restTemplate.postForEntity(url, entity, String.class);
-        final HttpStatus statusCode = stringResponseEntity.getStatusCode();
-        System.out.println(stringResponseEntity.getBody());
-
-        if (statusCode == HttpStatus.CREATED) {
-            System.out.println(path +" uploaded. Moving it");
-
-            final Path dest = uploadedDir.resolve(path.getFileName());
-            try {
-                Files.move(path, dest);
-            } catch (IOException e) {
-                System.err.println("unable to move " + path + " to " + dest + " after upload");
-                e.printStackTrace();
-            }
-        }
     }
 }

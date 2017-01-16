@@ -14,7 +14,8 @@ public class ExtractorMain {
     private String toSentCategory = "to send";
     private String[] destinationDirs = {"C:\\Users\\Pierrick\\Google Drive\\Cleitech\\Facturettes\\Test\\",};
     private String noCategoryDir = "noCategoryDir";
-
+    private static final String PROPERTY_NAME_TYPE = "type";
+    private String[] specialCategoryMarkers = new String[]{PROPERTY_NAME_TYPE};
     /**
      * The "main" categories
      **/
@@ -24,7 +25,8 @@ public class ExtractorMain {
     private ArrayList<String> fileList = new ArrayList<>();
 
     private ShoeboxedService shoeboxedService;
-    public void init() throws Exception {
+
+    private void init() throws Exception {
 
         Properties properties = new Properties();
         properties.load(new FileInputStream("shoeboxedExporter.properties"));
@@ -46,7 +48,7 @@ public class ExtractorMain {
      */
     private void retrieveAllFile() throws IOException, MultipleMainCategoriesException {
 
-        final Document[] documents = shoeboxedService.retrieveDocumentToSend(toSentCategory);
+        final Document[] documents = shoeboxedService.retrieveDocument(toSentCategory);
         for (Document document : documents) {
 
 
@@ -55,7 +57,7 @@ public class ExtractorMain {
                         document.getIssued(),
                         document.getVendor().replaceAll(" ", ""),
                         document.getTotal().toString().replace('.', ','),
-                        extractNotesInfo(document.getNotes()));
+                        "_" + extractTypeInfoFromCategory(document.getCategories()));
 
                 String subDir;
                 String mainCategory = extractMainCategory(document.getCategories());
@@ -68,6 +70,7 @@ public class ExtractorMain {
                 for (String destinationDir : destinationDirs) {
                     File subDirTotal = new File(destinationDir, subDir);
                     if (!subDirTotal.exists()) {
+                        //noinspection ResultOfMethodCallIgnored
                         subDirTotal.mkdirs();
                     }
 
@@ -89,13 +92,13 @@ public class ExtractorMain {
                 throw e;
             }
 
-            Collections.sort(fileList);
-            System.out.println("Final ordered list : ");
-            for (String s : fileList) {
-                System.out.println(s);
-            }
-        }
 
+        }
+        Collections.sort(fileList);
+        System.out.println("Final ordered list : ");
+        for (String s : fileList) {
+            System.out.println(s);
+        }
     }
 
     private void manageLog(File destinationFile) {
@@ -176,10 +179,22 @@ public class ExtractorMain {
                 if (mainCategoriesContains(category)) {
                     continue;
                 }
+                if (isSpecialCategory(category)) {
+                    continue;
+                }
                 return category;
             }
         }
         return noCategoryDir;
+    }
+
+    private boolean isSpecialCategory(String category) {
+        for (String specialCategoryMarker : specialCategoryMarkers) {
+            if (category.startsWith(specialCategoryMarker + ":")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean mainCategoriesContains(String category) {
@@ -197,7 +212,7 @@ public class ExtractorMain {
      * @param notes the notes to parse
      * @return the value associated to key type, or null
      */
-    private String extractNotesInfo(String notes) {
+    private String extractTypeInfoFromNotes(String notes) {
         if (notes == null) {
             return "";
         }
@@ -207,11 +222,26 @@ public class ExtractorMain {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        final String receiptType = notesP.getProperty("type");
+        final String receiptType = notesP.getProperty(PROPERTY_NAME_TYPE);
         if (receiptType == null) {
             return "";
         }
         return "_" + receiptType;
+    }
+
+    /**
+     * Parse catgories, searching category starting with <code>{@link #PROPERTY_NAME_TYPE}:</code>
+     * @param categories categories to parse
+     * @return type info, or empty value
+     */
+    private String extractTypeInfoFromCategory(String[] categories) {
+        String propertyMarker = PROPERTY_NAME_TYPE + ":";
+        for (String category : categories) {
+            if (category.startsWith(propertyMarker)) {
+                return category.substring(propertyMarker.length());
+            }
+        }
+        return "";
     }
 
     public static void main(String[] args) throws Exception {
