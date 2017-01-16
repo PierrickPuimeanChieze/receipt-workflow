@@ -16,5 +16,7 @@ dependencies {
 // https://mvnrepository.com/artifact/com.google.oauth-client/google-oauth-client
     compile group: 'com.google.oauth-client', name: 'google-oauth-client', version: '1.22.0'
     compile group: 'com.google.oauth-client', name: 'google-oauth-client-jetty', version: '1.22.0'
+    compile 'com.google.code.gson:gson:2.6.2'
     compile 'com.google.apis:google-api-services-drive:v3-rev52-1.22.0'
+    compile project(':shoeboxed-common')
 }

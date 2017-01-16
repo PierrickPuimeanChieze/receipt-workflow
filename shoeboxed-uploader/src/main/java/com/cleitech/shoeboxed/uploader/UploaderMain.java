@@ -1,5 +1,6 @@
 package com.cleitech.shoeboxed.uploader;
 
+import com.cleitech.shoeboxed.commons.ShoeboxedService;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
@@ -14,15 +15,6 @@ import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.*;
-import org.springframework.http.converter.FormHttpMessageConverter;
-import org.springframework.http.converter.HttpMessageConverter;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -30,6 +22,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Properties;
 
 public class UploaderMain {
     /**
@@ -70,10 +63,11 @@ public class UploaderMain {
      * at ~/.credentials/drive-java-quickstart
      */
     private static final List<String> SCOPES =
-            Arrays.asList(DriveScopes.DRIVE_METADATA_READONLY);
+            Collections.singletonList(DriveScopes.DRIVE_METADATA_READONLY);
     private static final String TO_UPLOAD_DIR_NAME = "to_upload";
 
-    private static Drive service;
+    private static Drive googleDriveService;
+    private static ShoeboxedService shoeboxedService;
 
     static {
         try {
@@ -91,12 +85,12 @@ public class UploaderMain {
      * @return an authorized Credential object.
      * @throws IOException
      */
-    public static Credential authorize() throws IOException {
+    private static Credential authorize() throws IOException {
         // Load client secrets.
         InputStream in =
-                UploaderMain.class.getResourceAsStream("/client_secret.json");
+                UploaderMain.class.getResourceAsStream("./client_secret.json");
         GoogleClientSecrets clientSecrets =
-                GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+                GoogleClientSecrets.load(JSON_FACTORY, new FileReader("./client_secret.json"));
 
         // Build flow and trigger user authorization request.
         GoogleAuthorizationCodeFlow flow =
@@ -114,12 +108,12 @@ public class UploaderMain {
     }
 
     /**
-     * Build and return an authorized Drive client service.
+     * Build and return an authorized Drive client googleDriveService.
      *
-     * @return an authorized Drive client service
+     * @return an authorized Drive client googleDriveService
      * @throws IOException
      */
-    public static Drive getDriveService() throws IOException {
+    private static Drive getDriveService() throws IOException {
         Credential credential = authorize();
         return new Drive.Builder(
                 HTTP_TRANSPORT, JSON_FACTORY, credential)
@@ -127,16 +121,28 @@ public class UploaderMain {
                 .build();
     }
 
+    private static ShoeboxedService getShoeboxedService() throws IOException {
+        Properties properties = new Properties();
+        properties.load(new FileInputStream("shoeboxedExporter.properties"));
+        String clientId = properties.getProperty("clientId");
+        String redirectUrl = properties.getProperty("redirectUrl");
+
+        shoeboxedService = new ShoeboxedService(redirectUrl, clientId);
+        shoeboxedService.authorize();
+        return shoeboxedService;
+    }
     public static void main(String[] args) throws IOException {
 
-        // Build a new authorized API client service.
-        service = getDriveService();
+        // Build a new authorized API client googleDriveService.
+        googleDriveService = getDriveService();
+        shoeboxedService = getShoeboxedService();
+
         // Print the names and IDs for up to 10 files.
         final String toUploadDirId = retrieveFileId(TO_UPLOAD_DIR_NAME);
         final String uploadedDirId = retrieveFileId(UPLOADED_DIR_NAME);
 
 
-        FileList fileResult = service.files().list()
+        FileList fileResult = googleDriveService.files().list()
                 .set("q", "'" + toUploadDirId + "' in parents")
                 .setPageSize(1)
                 .setFields("files(id, originalFilename),nextPageToken")
@@ -144,11 +150,11 @@ public class UploaderMain {
         List<File> fileToUpload = fileResult.getFiles();
         String nextPageToken = fileResult.getNextPageToken();
         System.out.printf("newxt Page Token : %s\n", nextPageToken);
-        handleFiles(uploadedDirId, fileToUpload);
+        handleFiles(uploadedDirId, fileToUpload, shoeboxedService);
         while (nextPageToken != null) {
             System.out.println("retrieve new result");
-            fileResult = service.files().list()
-                    .set("q", "'" + toUploadDirId + "' in parents")
+            fileResult = googleDriveService.files().list()
+                    .set("q", "trashed = false and '" + toUploadDirId + "' in parents")
                     .setPageToken(nextPageToken)
                     .setPageSize(1)
                     .setFields("files(id, originalFilename),nextPageToken")
@@ -156,12 +162,12 @@ public class UploaderMain {
             fileToUpload = fileResult.getFiles();
             nextPageToken = fileResult.getNextPageToken();
             System.out.printf("newxt Page Token : %s\n", nextPageToken);
-            handleFiles(uploadedDirId, fileToUpload);
+            handleFiles(uploadedDirId, fileToUpload, shoeboxedService);
         }
 
     }
 
-    private static void handleFiles(String uploadedDirId, List<File> fileToUpload) throws IOException {
+    private static void handleFiles(String uploadedDirId, List<File> fileToUpload, ShoeboxedService shoeboxedService) throws IOException {
         if (fileToUpload == null || fileToUpload.size() == 0) {
             //TODO  LOG this shit
             System.out.println("No File to upload");
@@ -169,7 +175,7 @@ public class UploaderMain {
 
             for (File file : fileToUpload) {
                 Path tempFileName = downloadTempFile(file);
-                uploadFileToShoeboxed(tempFileName);
+                shoeboxedService.uploadDocument(tempFileName);
                 moveFileToUploadedDir(file.getId(), uploadedDirId);
                 System.out.println(file);
             }
@@ -180,37 +186,9 @@ public class UploaderMain {
         System.out.println("move file "+id+" to dir "+uploadedDirId);
     }
 
-    private static void uploadFileToShoeboxed(Path tempFileName) {
-        //TODO LOG this shit
-        System.out.println("upload "+tempFileName+" to shoeboxed");
-
-
-        final java.io.File file = tempFileName.toFile();
-        Resource resourceToUpload = new FileSystemResource(file);
-        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("attachment", resourceToUpload);
-        body.add("document", "{ \"processingState\": \"PROCESSED\", \"type\":\"receipt\"}");
-        HttpEntity entity = new HttpEntity<>(body, headers);
-        final ResponseEntity<String> stringResponseEntity = restTemplate.postForEntity(url, entity, String.class);
-        final HttpStatus statusCode = stringResponseEntity.getStatusCode();
-        System.out.println(stringResponseEntity.getBody());
-
-        if (statusCode == HttpStatus.CREATED) {
-            System.out.println(path +" uploaded. Moving it");
-
-            final Path dest = uploadedDir.resolve(path.getFileName());
-            try {
-                Files.move(path, dest);
-            } catch (IOException e) {
-                System.err.println("unable to move " + path + " to " + dest + " after upload");
-                e.printStackTrace();
-            }
-        }
-    }
-
     private static String retrieveFileId(String dirName) throws IOException {
-        FileList result = service.files().list()
-                .set("q", "name='" +
+        FileList result = googleDriveService.files().list()
+                .set("q", "trashed = false and name='" +
                         dirName +
                         "'")
                 .setPageSize(10)
@@ -226,34 +204,20 @@ public class UploaderMain {
             final String message = "More than on dir found named" + dirName;
             throw new RuntimeException(message);
         }
-        return files.get(0).getId();
+        File file = files.get(0);
+        System.out.println("FULL FILE EXTENSION:"+file.getFullFileExtension());
+        System.out.println("NAME:"+file.getName());
+        return file.getId();
     }
 
     private static Path downloadTempFile(File file) throws IOException {
         final String fileId = file.getId();
         Path tempFileName = Files.createTempFile("shoeb_", file.getOriginalFilename());
         OutputStream outputStream = new FileOutputStream(tempFileName.toFile());
-        service.files().get(fileId)
+        googleDriveService.files().get(fileId)
                 .executeMediaAndDownloadTo(outputStream);
         outputStream.close();
         return tempFileName;
     }
-
-    private void startUploadingProcess(String accessToken, Path toUploadDir, Path uploadedDir) {
-
-
-        try {
-            Files.list(toUploadDir)
-                    .filter(path -> path.getFileName().toString().endsWith(".pdf"))
-                    .forEach(path -> {
-
-                            }
-                    );
-        } catch (IOException e) {
-            System.err.println("unable to list files of " + toUploadDir);
-            e.printStackTrace();
-        }
-    }
-
 
 }

@@ -35,7 +35,9 @@ public class ShoeboxedService {
     private static final String SCOPE = "all";
     private String clientId;
     private String accessToken;
-    private static final String PROCESSING_STATE = "PROCESSED";
+//    private static final String PROCESSING_STATE = "PROCESSED";
+    private static final String PROCESSING_STATE = "NEEDS_USER_PROCESSING";
+//    private static final String PROCESSING_STATE = "NEED_SYSTEM_PROCESSING";
     private RestTemplate restTemplate = new RestTemplate();
 
 
@@ -129,6 +131,7 @@ public class ShoeboxedService {
     public HttpStatus uploadDocument(Path tempFileName) {
 
         final UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromUriString("https://api.shoeboxed.com/v2/accounts/{accountId}/documents/?");
+//        final UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromUriString("http://localhost:9999/test");
         String url = uriComponentsBuilder.buildAndExpand(retrieveAccountId()).toUriString();
 
         //TODO LOG this shit
