@@ -14,6 +14,15 @@ import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.*;
+import org.springframework.http.converter.FormHttpMessageConverter;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -51,6 +60,8 @@ public class UploaderMain {
      * Global instance of the HTTP transport.
      */
     private static HttpTransport HTTP_TRANSPORT;
+
+    private static String shoeboxedAccountId = "1809343498";
 
     /**
      * Global instance of the scopes required by this quickstart.
@@ -117,6 +128,7 @@ public class UploaderMain {
     }
 
     public static void main(String[] args) throws IOException {
+
         // Build a new authorized API client service.
         service = getDriveService();
         // Print the names and IDs for up to 10 files.
@@ -169,7 +181,31 @@ public class UploaderMain {
     }
 
     private static void uploadFileToShoeboxed(Path tempFileName) {
+        //TODO LOG this shit
         System.out.println("upload "+tempFileName+" to shoeboxed");
+
+
+        final java.io.File file = tempFileName.toFile();
+        Resource resourceToUpload = new FileSystemResource(file);
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("attachment", resourceToUpload);
+        body.add("document", "{ \"processingState\": \"PROCESSED\", \"type\":\"receipt\"}");
+        HttpEntity entity = new HttpEntity<>(body, headers);
+        final ResponseEntity<String> stringResponseEntity = restTemplate.postForEntity(url, entity, String.class);
+        final HttpStatus statusCode = stringResponseEntity.getStatusCode();
+        System.out.println(stringResponseEntity.getBody());
+
+        if (statusCode == HttpStatus.CREATED) {
+            System.out.println(path +" uploaded. Moving it");
+
+            final Path dest = uploadedDir.resolve(path.getFileName());
+            try {
+                Files.move(path, dest);
+            } catch (IOException e) {
+                System.err.println("unable to move " + path + " to " + dest + " after upload");
+                e.printStackTrace();
+            }
+        }
     }
 
     private static String retrieveFileId(String dirName) throws IOException {
@@ -202,5 +238,22 @@ public class UploaderMain {
         outputStream.close();
         return tempFileName;
     }
+
+    private void startUploadingProcess(String accessToken, Path toUploadDir, Path uploadedDir) {
+
+
+        try {
+            Files.list(toUploadDir)
+                    .filter(path -> path.getFileName().toString().endsWith(".pdf"))
+                    .forEach(path -> {
+
+                            }
+                    );
+        } catch (IOException e) {
+            System.err.println("unable to list files of " + toUploadDir);
+            e.printStackTrace();
+        }
+    }
+
 
 }
