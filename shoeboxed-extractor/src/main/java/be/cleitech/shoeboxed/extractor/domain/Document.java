@@ -11,7 +11,9 @@ public class Document {
 
 
     private Attachment attachment;
-    private Double totalInPreferredCurrency;
+    private Double total;
+    private Double tax;
+    private String currency;
     private Date issued;
     private Date uploaded ;
     private String vendor;
@@ -27,12 +29,12 @@ public class Document {
         this.attachment = attachment;
     }
 
-    public Double getTotalInPreferredCurrency() {
-        return totalInPreferredCurrency;
+    public Double getTotal() {
+        return total;
     }
 
-    public void setTotalInPreferredCurrency(Double totalInPreferredCurrency) {
-        this.totalInPreferredCurrency = totalInPreferredCurrency;
+    public void setTotal(Double total) {
+        this.total = total;
     }
 
     public Date getIssued() {
@@ -87,7 +89,7 @@ public class Document {
     public String toString() {
         return "Document{" +
                 "attachment=" + attachment +
-                ", totalInPreferredCurrency=" + totalInPreferredCurrency +
+                ", total=" + total +
                 ", issued=" + issued +
                 ", uploaded =" + uploaded  +
                 ", vendor='" + vendor + '\'' +
