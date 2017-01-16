@@ -1,4 +1,4 @@
-package be.cleitech.shoeboxed.extractor.domain;
+package com.cleitech.shoeboxed.domain;
 
 import java.net.URL;
 

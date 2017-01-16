@@ -7,7 +7,4 @@
     <center>
         <Button mnemonicParsing="false" onAction="#startRetrievingProcessed" text="Retrive Processed" BorderPane.alignment="CENTER" />
     </center>
-   <top>
-      <Button mnemonicParsing="false" text="Start Upload" onAction="#uploadDocuments" BorderPane.alignment="CENTER" />
-   </top>
 </BorderPane>
