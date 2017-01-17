@@ -87,8 +87,6 @@ public class UploaderMain {
      */
     private static Credential authorize() throws IOException {
         // Load client secrets.
-        InputStream in =
-                UploaderMain.class.getResourceAsStream("./client_secret.json");
         GoogleClientSecrets clientSecrets =
                 GoogleClientSecrets.load(JSON_FACTORY, new FileReader("./client_secret.json"));
 
@@ -150,7 +148,7 @@ public class UploaderMain {
         List<File> fileToUpload = fileResult.getFiles();
         String nextPageToken = fileResult.getNextPageToken();
         System.out.printf("newxt Page Token : %s\n", nextPageToken);
-        handleFiles(uploadedDirId, fileToUpload, shoeboxedService);
+        handleFiles(toUploadDirId,uploadedDirId, fileToUpload, shoeboxedService);
         while (nextPageToken != null) {
             System.out.println("retrieve new result");
             fileResult = googleDriveService.files().list()
@@ -162,12 +160,12 @@ public class UploaderMain {
             fileToUpload = fileResult.getFiles();
             nextPageToken = fileResult.getNextPageToken();
             System.out.printf("newxt Page Token : %s\n", nextPageToken);
-            handleFiles(uploadedDirId, fileToUpload, shoeboxedService);
+            handleFiles(toUploadDirId, uploadedDirId, fileToUpload, shoeboxedService);
         }
 
     }
 
-    private static void handleFiles(String uploadedDirId, List<File> fileToUpload, ShoeboxedService shoeboxedService) throws IOException {
+    private static void handleFiles(String toUploadDirId, String uploadedDirId, List<File> fileToUpload, ShoeboxedService shoeboxedService) throws IOException {
         if (fileToUpload == null || fileToUpload.size() == 0) {
             //TODO  LOG this shit
             System.out.println("No File to upload");
@@ -176,14 +174,19 @@ public class UploaderMain {
             for (File file : fileToUpload) {
                 Path tempFileName = downloadTempFile(file);
                 shoeboxedService.uploadDocument(tempFileName);
-                moveFileToUploadedDir(file.getId(), uploadedDirId);
+                moveFileToUploadedDir(file.getId(),toUploadDirId, uploadedDirId);
                 System.out.println(file);
             }
         }
     }
 
-    private static void moveFileToUploadedDir(String id, String uploadedDirId) {
-        System.out.println("move file "+id+" to dir "+uploadedDirId);
+    private static void moveFileToUploadedDir(String id, String sourceDir, String destDir) throws IOException {
+        System.out.println("move file "+id+" from to dir "+destDir);
+        final Drive.Files.Update update = googleDriveService.files().update(id, null);
+        update.setRemoveParents(sourceDir);
+        update.setAddParents(destDir);
+        update.setFields("id, parents");
+        final File execute = update.execute();
     }
 
     private static String retrieveFileId(String dirName) throws IOException {
