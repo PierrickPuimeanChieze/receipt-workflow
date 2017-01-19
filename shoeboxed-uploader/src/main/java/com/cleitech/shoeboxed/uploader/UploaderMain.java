@@ -133,6 +133,12 @@ public class UploaderMain {
     }
     public static void main(String[] args) throws IOException {
 
+        for (String arg : args) {
+            if (arg.equals("--version")) {
+                System.out.println("YOLO");
+                return;
+            }
+        }
         // Build a new authorized API client googleDriveService.
         googleDriveService = getDriveService();
         shoeboxedService = getShoeboxedService();
