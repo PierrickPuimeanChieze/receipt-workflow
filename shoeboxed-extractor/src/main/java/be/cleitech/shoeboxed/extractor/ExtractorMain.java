@@ -27,15 +27,7 @@ public class ExtractorMain {
     private ShoeboxedService shoeboxedService;
 
     private void init() throws Exception {
-
-        Properties properties = new Properties();
-        properties.load(new FileInputStream("shoeboxedExporter.properties"));
-        String clientId = properties.getProperty("clientId");
-        destinationDirs = properties.getProperty("destinationDirs").split(";");
-        noCategoryDir = properties.getProperty("noCategoryDir");
-        String redirectUrl = properties.getProperty("redirectUrl");
-
-        shoeboxedService = new ShoeboxedService(redirectUrl, clientId);
+        shoeboxedService = ShoeboxedService.createFromDefaultConfFilePath();
         shoeboxedService.authorize();
     }
 

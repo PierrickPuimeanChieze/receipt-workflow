@@ -1,5 +1,6 @@
 package com.cleitech.shoeboxed.commons;
 
+import com.cleitech.shoeboxed.Utils;
 import com.cleitech.shoeboxed.domain.Document;
 import com.cleitech.shoeboxed.domain.Documents;
 import com.cleitech.shoeboxed.domain.User;
@@ -17,6 +18,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
@@ -25,6 +27,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * @author Pierrick Puimean-Chieze on 27-12-16.
@@ -40,8 +43,14 @@ public class ShoeboxedService {
 //    private static final String PROCESSING_STATE = "NEED_SYSTEM_PROCESSING";
     private RestTemplate restTemplate = new RestTemplate();
 
+    private static final String[] SHOEBOXED_EXPORTER_PROPERTIES_PATHS = new String[]{
+            "./shoeboxedExporter.properties",
+            "/etc/shoeboxed-toolsuite/shoeboxedExporter.properties",
+            System.getenv("APPDATA") + "/shoeboxed-toolsuite/shoeboxedExporter.properties",
+            "~/.shoeboxed-toolsuite/shoeboxedExporter.properties"
+    };
 
-    public ShoeboxedService(String redirectUrl, String clientId) {
+    private ShoeboxedService(String redirectUrl, String clientId) {
         this.redirectUrl = redirectUrl;
         this.clientId = clientId;
         HttpMessageConverter formHttpMessageConverter = new FormHttpMessageConverter();
@@ -50,6 +59,19 @@ public class ShoeboxedService {
 
     }
 
+    public static ShoeboxedService createFromDefaultConfFilePath() throws IOException {
+        Properties properties = new Properties();
+        java.io.File shoeboxedPropertiesFile = Utils.findConfFile(SHOEBOXED_EXPORTER_PROPERTIES_PATHS);
+        if (shoeboxedPropertiesFile == null) {
+            throw new IOException("Unable to find file shoeboxedExporter.properties");
+        }
+        properties.load(new FileInputStream(shoeboxedPropertiesFile));
+        String clientId = properties.getProperty("clientId");
+        String redirectUrl = properties.getProperty("redirectUrl");
+
+        return new ShoeboxedService(redirectUrl, clientId);
+
+    }
 
     public void authorize() {
         this.accessToken = retrieveAccessToken();

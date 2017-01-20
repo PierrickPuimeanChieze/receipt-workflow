@@ -1,5 +1,6 @@
 package com.cleitech.shoeboxed.uploader;
 
+import com.cleitech.shoeboxed.Utils;
 import com.cleitech.shoeboxed.commons.ShoeboxedService;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
@@ -32,12 +33,7 @@ public class UploaderMain {
             "~/.shoeboxed-toolsuite/client_secret.json"
     };
 
-    private static final String[] SHOEBOXED_EXPORTER_PROPERTIES_PATHS = new String[]{
-            "./shoeboxedExporter.properties",
-            "/etc/shoeboxed-toolsuite/shoeboxedExporter.properties",
-            System.getenv("APPDATA") + "/shoeboxed-toolsuite/shoeboxedExporter.properties",
-            "~/.shoeboxed-toolsuite/shoeboxedExporter.properties"
-    };
+
     /**
      * Application name.
      */
@@ -100,7 +96,7 @@ public class UploaderMain {
      */
     private static Credential authorize() throws IOException {
         // Load client secrets.
-        java.io.File s = findConfFile(CLIENT_SECRET_PATHS);
+        java.io.File s = Utils.findConfFile(CLIENT_SECRET_PATHS);
         if (s == null) {
             throw new IOException("Unable to find client_secret.json in any of the default locations");
         }
@@ -122,16 +118,6 @@ public class UploaderMain {
         return credential;
     }
 
-    private static java.io.File findConfFile(String[] pathsToLook) {
-        for (String clientSecretPath : pathsToLook) {
-            java.io.File file = new java.io.File(clientSecretPath);
-            if (file.exists()) {
-                return file;
-            }
-        }
-        return null;
-    }
-
     /**
      * Build and return an authorized Drive client googleDriveService.
      *
@@ -147,16 +133,7 @@ public class UploaderMain {
     }
 
     private static ShoeboxedService getShoeboxedService() throws IOException {
-        Properties properties = new Properties();
-        java.io.File shoeboxedPropertiesFile = findConfFile(SHOEBOXED_EXPORTER_PROPERTIES_PATHS);
-        if (shoeboxedPropertiesFile == null) {
-            throw new IOException("Unable to find file shoeboxedExporter.properties");
-        }
-        properties.load(new FileInputStream(shoeboxedPropertiesFile));
-        String clientId = properties.getProperty("clientId");
-        String redirectUrl = properties.getProperty("redirectUrl");
-
-        shoeboxedService = new ShoeboxedService(redirectUrl, clientId);
+        shoeboxedService = ShoeboxedService.createFromDefaultConfFilePath();
         shoeboxedService.authorize();
         return shoeboxedService;
     }
@@ -171,7 +148,7 @@ public class UploaderMain {
             }
 
             if (arg.equals("--test-client-secret")) {
-                System.out.println(findConfFile(CLIENT_SECRET_PATHS));
+                System.out.println(Utils.findConfFile(CLIENT_SECRET_PATHS));
                 return;
             }
         }
