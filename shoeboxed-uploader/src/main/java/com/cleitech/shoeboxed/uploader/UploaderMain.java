@@ -19,12 +19,25 @@ import com.google.api.services.drive.model.FileList;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
 public class UploaderMain {
+
+    private final static String[] CLIENT_SECRET_PATHS = new String[]{
+            "./client_secret.json",
+            "/etc/shoeboxed-toolsuite/client_secret.json",
+            System.getenv("APPDATA") + "/shoeboxed-toolsuite/client_secret.json",
+            "~/.shoeboxed-toolsuite/client_secret.json"
+    };
+
+    private static final String[] SHOEBOXED_EXPORTER_PROPERTIES_PATHS = new String[]{
+            "./shoeboxedExporter.properties",
+            "/etc/shoeboxed-toolsuite/shoeboxedExporter.properties",
+            System.getenv("APPDATA") + "/shoeboxed-toolsuite/shoeboxedExporter.properties",
+            "~/.shoeboxed-toolsuite/shoeboxedExporter.properties"
+    };
     /**
      * Application name.
      */
@@ -87,8 +100,12 @@ public class UploaderMain {
      */
     private static Credential authorize() throws IOException {
         // Load client secrets.
+        java.io.File s = findConfFile(CLIENT_SECRET_PATHS);
+        if (s == null) {
+            throw new IOException("Unable to find client_secret.json in any of the default locations");
+        }
         GoogleClientSecrets clientSecrets =
-                GoogleClientSecrets.load(JSON_FACTORY, new FileReader("./client_secret.json"));
+                GoogleClientSecrets.load(JSON_FACTORY, new FileReader(s));
 
         // Build flow and trigger user authorization request.
         GoogleAuthorizationCodeFlow flow =
@@ -103,6 +120,16 @@ public class UploaderMain {
         System.out.println(
                 "Credentials saved to " + DATA_STORE_DIR.getAbsolutePath());
         return credential;
+    }
+
+    private static java.io.File findConfFile(String[] pathsToLook) {
+        for (String clientSecretPath : pathsToLook) {
+            java.io.File file = new java.io.File(clientSecretPath);
+            if (file.exists()) {
+                return file;
+            }
+        }
+        return null;
     }
 
     /**
@@ -121,7 +148,11 @@ public class UploaderMain {
 
     private static ShoeboxedService getShoeboxedService() throws IOException {
         Properties properties = new Properties();
-        properties.load(new FileInputStream("shoeboxedExporter.properties"));
+        java.io.File shoeboxedPropertiesFile = findConfFile(SHOEBOXED_EXPORTER_PROPERTIES_PATHS);
+        if (shoeboxedPropertiesFile == null) {
+            throw new IOException("Unable to find file shoeboxedExporter.properties");
+        }
+        properties.load(new FileInputStream(shoeboxedPropertiesFile));
         String clientId = properties.getProperty("clientId");
         String redirectUrl = properties.getProperty("redirectUrl");
 
@@ -129,11 +160,18 @@ public class UploaderMain {
         shoeboxedService.authorize();
         return shoeboxedService;
     }
+
+
     public static void main(String[] args) throws IOException {
 
         for (String arg : args) {
             if (arg.equals("--version")) {
                 System.out.println("YOLO");
+                return;
+            }
+
+            if (arg.equals("--test-client-secret")) {
+                System.out.println(findConfFile(CLIENT_SECRET_PATHS));
                 return;
             }
         }
@@ -214,8 +252,8 @@ public class UploaderMain {
             throw new RuntimeException(message);
         }
         File file = files.get(0);
-        System.out.println("FULL FILE EXTENSION:"+file.getFullFileExtension());
-        System.out.println("NAME:"+file.getName());
+        System.out.println("FULL FILE EXTENSION:" + file.getFullFileExtension());
+        System.out.println("NAME:" + file.getName());
         return file.getId();
     }
 
