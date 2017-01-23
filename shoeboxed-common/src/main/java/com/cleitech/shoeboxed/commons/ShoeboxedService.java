@@ -18,12 +18,9 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
@@ -39,17 +36,10 @@ public class ShoeboxedService {
     private static final String SCOPE = "all";
     private String clientId;
     private String accessToken;
-//    private static final String PROCESSING_STATE = "PROCESSED";
+    //    private static final String PROCESSING_STATE = "PROCESSED";
     private static final String PROCESSING_STATE = "NEEDS_USER_PROCESSING";
-//    private static final String PROCESSING_STATE = "NEED_SYSTEM_PROCESSING";
+    //    private static final String PROCESSING_STATE = "NEED_SYSTEM_PROCESSING";
     private RestTemplate restTemplate = new RestTemplate();
-
-    private static final String[] SHOEBOXED_EXPORTER_PROPERTIES_PATHS = new String[]{
-            "./shoeboxedExporter.properties",
-            "/etc/shoeboxed-toolsuite/shoeboxedExporter.properties",
-            System.getenv("APPDATA") + "/shoeboxed-toolsuite/shoeboxedExporter.properties",
-            "~/.shoeboxed-toolsuite/shoeboxedExporter.properties"
-    };
 
     private ShoeboxedService(String redirectUrl, String clientId) {
         this.redirectUrl = redirectUrl;
@@ -61,12 +51,7 @@ public class ShoeboxedService {
     }
 
     public static ShoeboxedService createFromDefaultConfFilePath() throws IOException {
-        Properties properties = new Properties();
-        java.io.File shoeboxedPropertiesFile = Utils.findConfFile(SHOEBOXED_EXPORTER_PROPERTIES_PATHS);
-        if (shoeboxedPropertiesFile == null) {
-            throw new FileNotFoundException("Unable to find file shoeboxedExporter.properties");
-        }
-        properties.load(new FileInputStream(shoeboxedPropertiesFile));
+        Properties properties = Utils.getConfProperties();
         String clientId = properties.getProperty("clientId");
         String redirectUrl = properties.getProperty("redirectUrl");
         return new ShoeboxedService(redirectUrl, clientId);
@@ -79,6 +64,7 @@ public class ShoeboxedService {
 
     /**
      * Allow to retrieve an acess token
+     *
      * @return the access token to retrieve
      */
     private String retrieveAccessToken() {
@@ -148,6 +134,7 @@ public class ShoeboxedService {
 
     /**
      * Allow to upload a document
+     *
      * @param tempFileName the path to thedocument to upload
      * @return the status of the upload
      */
@@ -181,6 +168,7 @@ public class ShoeboxedService {
 
     /**
      * Allow to retrieve the first account Id
+     *
      * @return the first account Id
      */
     private String retrieveAccountId() {
@@ -203,6 +191,7 @@ public class ShoeboxedService {
 
     /**
      * Allow to retrieve document
+     *
      * @param categoryFilter the category of the searched document
      * @return the list of Document
      */

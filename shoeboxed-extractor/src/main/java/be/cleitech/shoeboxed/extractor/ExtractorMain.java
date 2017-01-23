@@ -1,23 +1,24 @@
 package be.cleitech.shoeboxed.extractor;
 
 import com.cleitech.shoeboxed.Utils;
-import com.cleitech.shoeboxed.domain.Document;
 import com.cleitech.shoeboxed.commons.ShoeboxedService;
+import com.cleitech.shoeboxed.domain.Document;
 import com.dropbox.core.*;
 import com.dropbox.core.json.JsonReader;
 import com.dropbox.core.v2.DbxClientV2;
 import com.dropbox.core.v2.files.FileMetadata;
-import com.dropbox.core.v2.files.ListFolderResult;
-import com.dropbox.core.v2.files.Metadata;
 import com.dropbox.core.v2.users.FullAccount;
-import com.machinepublishers.jbrowserdriver.*;
+import com.machinepublishers.jbrowserdriver.JBrowserDriver;
 import org.openqa.selenium.WebElement;
 import org.springframework.util.FileCopyUtils;
 
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Date;
+import java.util.Properties;
+import java.util.Set;
+import java.util.TreeSet;
 
 public class ExtractorMain {
 
@@ -29,7 +30,8 @@ public class ExtractorMain {
             System.getenv("APPDATA") + "/shoeboxed-toolsuite/dropbox_client_secret.json",
             "~/.shoeboxed-toolsuite/dropbox_client_secret.json"
     };
-    private final String DROPBOX_UPLOAD_PATH = "/cfp consulting/TEST";
+
+    private final String DROPBOX_UPLOAD_PATH = "/cfp consulting/IN";
 
 
     private String toSentCategory = "to send";
@@ -52,8 +54,13 @@ public class ExtractorMain {
     private String dropboxAccessToken;
 
     private void init() throws JsonReader.FileLoadException, IOException {
-        shoeboxedService = ShoeboxedService.createFromDefaultConfFilePath();
-        shoeboxedService.authorize();
+        initShoeboxedService();
+        initDropboxSDK();
+        Properties confProperties = Utils.getConfProperties();
+        destinationDirs = confProperties.getProperty("destinationDirs").split(",");
+    }
+
+    private void initDropboxSDK() throws JsonReader.FileLoadException, IOException {
         File dropboxAccessTokenFile = new File("./dropboxAccessToken");
         if (!dropboxAccessTokenFile.exists()) {
             dropboxAccessToken = retrieveDropBoxAccessToken();
@@ -69,6 +76,11 @@ public class ExtractorMain {
                 dropboxAccessToken = bufferedReader.readLine();
             }
         }
+    }
+
+    private void initShoeboxedService() throws IOException {
+        shoeboxedService = ShoeboxedService.createFromDefaultConfFilePath();
+        shoeboxedService.authorize();
     }
 
     private String retrieveDropBoxAccessToken() throws JsonReader.FileLoadException, IOException {
@@ -118,15 +130,7 @@ public class ExtractorMain {
         throw new DropboxAuthenticationOption("Unable to find a login Input field", driver);
     }
 
-    private void findAndInputPassword(JBrowserDriver driver) throws DropboxAuthenticationOption {
-        for (WebElement login_email_element : driver.findElementsByName("login_password")) {
-            if (login_email_element.getTagName().equalsIgnoreCase("input")) {
-                login_email_element.sendKeys(dropboxPassword);
-                return;
-            }
-        }
-        throw new DropboxAuthenticationOption("Unable to find a login PAssword field", driver);
-    }
+
 
     /**
      * Retrieve and store the files from the API

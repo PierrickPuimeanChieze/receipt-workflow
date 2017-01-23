@@ -1,0 +1,10 @@
+#Category of the retrieved files
+toSentCategory=to send 
+# destination Dir of the exporter
+destinationDirs=C:/ExportDir
+ # Directory for the document without category (outside of the one set as toSentCategory
+noCategoryDir=noCategory 
+# client id of the app creating in your settings
+clientId=0123456789245132486qsdsd 
+# Redirect url of the application you created in your settings
+redirectUrl=https://api.shoeboxed.com/v2/explorer/o2c.html 
