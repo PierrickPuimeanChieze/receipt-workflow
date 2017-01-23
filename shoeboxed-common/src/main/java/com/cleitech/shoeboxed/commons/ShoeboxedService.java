@@ -19,6 +19,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
@@ -63,12 +64,11 @@ public class ShoeboxedService {
         Properties properties = new Properties();
         java.io.File shoeboxedPropertiesFile = Utils.findConfFile(SHOEBOXED_EXPORTER_PROPERTIES_PATHS);
         if (shoeboxedPropertiesFile == null) {
-            throw new IOException("Unable to find file shoeboxedExporter.properties");
+            throw new FileNotFoundException("Unable to find file shoeboxedExporter.properties");
         }
         properties.load(new FileInputStream(shoeboxedPropertiesFile));
         String clientId = properties.getProperty("clientId");
         String redirectUrl = properties.getProperty("redirectUrl");
-
         return new ShoeboxedService(redirectUrl, clientId);
 
     }
@@ -94,8 +94,9 @@ public class ShoeboxedService {
 
         // You can optionally pass a Settings object here,
         // constructed using Settings.Builder
-        JBrowserDriver driver = new JBrowserDriver(Settings.builder().
-                timezone(Timezone.AMERICA_NEWYORK).build());
+        Settings.Builder timezone = Settings.builder().
+                timezone(Timezone.AMERICA_NEWYORK);
+        JBrowserDriver driver = new JBrowserDriver(timezone.build());
 
         // This will block for the page load and any
         // associated AJAX requests
@@ -105,13 +106,13 @@ public class ShoeboxedService {
         driver.findElementById("password").sendKeys("QzuD0iAPt3yiQCceJItn");
         driver.findElementById("loginForm").submit();
 
-        System.out.println("Authentication done");
+        System.out.println("Shoeboxed Authentication done");
         final String previousUrl = driver.getCurrentUrl();
         System.out.println("previousUrl ; " + previousUrl);
         driver.findElementByName("Allow").click();
-        System.out.println("Allowing clicked");
+        System.out.println("Shoeboxed Allowing clicked");
         String currentURL = driver.getCurrentUrl();
-        System.out.println("URL just after click : " + currentURL);
+        System.out.println("Shoeboxed URL just after click : " + currentURL);
         while (currentURL.equals(previousUrl)) {
             int currentStatus = driver.getStatusCode();
             if (currentStatus != 200) {

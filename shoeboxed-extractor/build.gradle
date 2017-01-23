@@ -26,6 +26,8 @@ dependencies {
     compile 'com.google.code.gson:gson:2.6.2'
     compile "org.projectlombok:lombok:1.16.8"
     compile project(':shoeboxed-common')
+    compile 'com.dropbox.core:dropbox-core-sdk:2.1.2'
+
 }
 
 

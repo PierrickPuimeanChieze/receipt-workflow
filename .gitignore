@@ -5,4 +5,4 @@
 shoeboxed-common/build/
 shoeboxed-extractor/build/
 shoeboxed-uploader/build/
-/client_secret.json
+/*client_secret.json

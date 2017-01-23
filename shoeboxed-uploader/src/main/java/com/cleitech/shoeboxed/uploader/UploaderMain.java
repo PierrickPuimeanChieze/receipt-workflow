@@ -22,11 +22,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
-import java.util.Properties;
 
 public class UploaderMain {
 
-    private final static String[] CLIENT_SECRET_PATHS = new String[]{
+    private final static String[] GOOGLE_CLIENT_SECRET_PATHS = new String[]{
             "./client_secret.json",
             "/etc/shoeboxed-toolsuite/client_secret.json",
             System.getenv("APPDATA") + "/shoeboxed-toolsuite/client_secret.json",
@@ -96,7 +95,7 @@ public class UploaderMain {
      */
     private static Credential authorize() throws IOException {
         // Load client secrets.
-        java.io.File s = Utils.findConfFile(CLIENT_SECRET_PATHS);
+        java.io.File s = Utils.findConfFile(GOOGLE_CLIENT_SECRET_PATHS);
         if (s == null) {
             throw new IOException("Unable to find client_secret.json in any of the default locations");
         }
@@ -148,7 +147,7 @@ public class UploaderMain {
             }
 
             if (arg.equals("--test-client-secret")) {
-                System.out.println(Utils.findConfFile(CLIENT_SECRET_PATHS));
+                System.out.println(Utils.findConfFile(GOOGLE_CLIENT_SECRET_PATHS));
                 return;
             }
         }

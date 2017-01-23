@@ -1,7 +1,17 @@
 package be.cleitech.shoeboxed.extractor;
 
+import com.cleitech.shoeboxed.Utils;
 import com.cleitech.shoeboxed.domain.Document;
 import com.cleitech.shoeboxed.commons.ShoeboxedService;
+import com.dropbox.core.*;
+import com.dropbox.core.json.JsonReader;
+import com.dropbox.core.v2.DbxClientV2;
+import com.dropbox.core.v2.files.FileMetadata;
+import com.dropbox.core.v2.files.ListFolderResult;
+import com.dropbox.core.v2.files.Metadata;
+import com.dropbox.core.v2.users.FullAccount;
+import com.machinepublishers.jbrowserdriver.*;
+import org.openqa.selenium.WebElement;
 import org.springframework.util.FileCopyUtils;
 
 import java.io.*;
@@ -10,12 +20,22 @@ import java.util.*;
 public class ExtractorMain {
 
 
+    private static String dropboxPassword = "teocali@reschaotica.com";
+    private final static String[] DROPBOX_SECRET_PATHS = new String[]{
+            "./dropbox_client_secret.json",
+            "/etc/shoeboxed-toolsuite/dropbox_client_secret.json",
+            System.getenv("APPDATA") + "/shoeboxed-toolsuite/dropbox_client_secret.json",
+            "~/.shoeboxed-toolsuite/dropbox_client_secret.json"
+    };
+
 
     private String toSentCategory = "to send";
     private String[] destinationDirs = {"C:\\Users\\Pierrick\\Google Drive\\Cleitech\\Facturettes\\Test\\",};
     private String noCategoryDir = "noCategoryDir";
     private static final String PROPERTY_NAME_TYPE = "type";
     private String[] specialCategoryMarkers = new String[]{PROPERTY_NAME_TYPE};
+    private DbxAuthFinish authFinish;
+
     /**
      * The "main" categories
      **/
@@ -25,12 +45,85 @@ public class ExtractorMain {
     private ArrayList<String> fileList = new ArrayList<>();
 
     private ShoeboxedService shoeboxedService;
+    private DbxAppInfo appInfo;
+    private String dropboxAccessToken;
 
-    private void init() throws Exception {
+    private void init() throws JsonReader.FileLoadException, IOException {
         shoeboxedService = ShoeboxedService.createFromDefaultConfFilePath();
         shoeboxedService.authorize();
+        File dropboxAccessTokenFile = new File("./dropboxAccessToken");
+        if (!dropboxAccessTokenFile.exists()) {
+            dropboxAccessToken = retrieveDropBoxAccessToken();
+            try (FileWriter fileWriter = new FileWriter(dropboxAccessTokenFile)) {
+                fileWriter.write(dropboxAccessToken);
+            }
+
+        } else {
+            try (
+                    FileReader fileReader = new FileReader(dropboxAccessTokenFile);
+                    BufferedReader bufferedReader = new BufferedReader(fileReader)
+            ) {
+                dropboxAccessToken = bufferedReader.readLine();
+            }
+        }
     }
 
+    private String retrieveDropBoxAccessToken() throws JsonReader.FileLoadException, IOException {
+        File dropBoxInfoFile = Utils.findConfFile(DROPBOX_SECRET_PATHS);
+        if (dropBoxInfoFile == null) {
+            throw new FileNotFoundException("Unable to found dropbox client secret file");
+        }
+        appInfo = DbxAppInfo.Reader.readFromFile(dropBoxInfoFile);
+
+        DbxRequestConfig requestConfig = new DbxRequestConfig("shoeboxed-toolsuite");
+        DbxWebAuth webAuth = new DbxWebAuth(requestConfig, appInfo);
+        DbxWebAuth.Request webAuthRequest = DbxWebAuth.newRequestBuilder()
+                .withNoRedirect()
+                .build();
+
+        String authorizeUrl = webAuth.authorize(webAuthRequest);
+        System.out.println("Go to " + authorizeUrl);
+
+        String code = new BufferedReader(new InputStreamReader(System.in)).readLine();
+        if (code == null) {
+            //FIXME : put an exception
+            throw new RuntimeException("code==null");
+        }
+        //TODO log this shit
+        System.out.println("Authorization Code :" + code);
+        code = code.trim();
+        try {
+            authFinish = webAuth.finishFromCode(code);
+        } catch (DbxException ex) {
+            throw new RuntimeException("Error in DbxWebAuth.authorize: " + ex.getMessage());
+        }
+
+
+        System.out.println("Authorization complete.");
+        System.out.println("- User ID: " + authFinish.getUserId());
+        System.out.println("- Access Token: " + authFinish.getAccessToken());
+        return authFinish.getAccessToken();
+    }
+
+    private void findAndInputLogin(JBrowserDriver driver) throws DropboxAuthenticationOption {
+        for (WebElement login_email_element : driver.findElementsByName("login_email")) {
+            if (login_email_element.getTagName().equalsIgnoreCase("input")) {
+                login_email_element.sendKeys(dropboxPassword);
+                return;
+            }
+        }
+        throw new DropboxAuthenticationOption("Unable to find a login Input field", driver);
+    }
+
+    private void findAndInputPassword(JBrowserDriver driver) throws DropboxAuthenticationOption {
+        for (WebElement login_email_element : driver.findElementsByName("login_password")) {
+            if (login_email_element.getTagName().equalsIgnoreCase("input")) {
+                login_email_element.sendKeys(dropboxPassword);
+                return;
+            }
+        }
+        throw new DropboxAuthenticationOption("Unable to find a login PAssword field", driver);
+    }
 
     /**
      * Retrieve and store the files from the API
@@ -223,6 +316,7 @@ public class ExtractorMain {
 
     /**
      * Parse catgories, searching category starting with <code>{@link #PROPERTY_NAME_TYPE}:</code>
+     *
      * @param categories categories to parse
      * @return type info, or empty value
      */
@@ -239,6 +333,39 @@ public class ExtractorMain {
     public static void main(String[] args) throws Exception {
         final ExtractorMain extractorMain = new ExtractorMain();
         extractorMain.init();
-        extractorMain.retrieveAllFile();
+        extractorMain.testConnection();
+//        extractorMain.retrieveAllFile();
     }
+
+    private void testConnection() throws DbxException, IOException {
+        // Create Dropbox client
+        DbxRequestConfig config = new DbxRequestConfig("shoeboxed-toolsuite");
+        DbxClientV2 client = new DbxClientV2(config, dropboxAccessToken);
+
+        // Get current account info
+        FullAccount account = client.users().getCurrentAccount();
+        System.out.println(account.getName().getDisplayName());
+
+        // Get files and folder metadata from Dropbox root directory
+        ListFolderResult result = client.files().listFolder("");
+        while (true) {
+            for (Metadata metadata : result.getEntries()) {
+                System.out.println(metadata.getPathLower());
+            }
+
+            if (!result.getHasMore()) {
+                break;
+            }
+
+            result = client.files().listFolderContinue(result.getCursor());
+        }
+
+        // Upload "test.txt" to Dropbox
+        try (InputStream in = new FileInputStream("test.txt")) {
+            FileMetadata metadata = client.files().uploadBuilder("/test.txt")
+                    .uploadAndFinish(in);
+        }
+    }
+
+
 }
