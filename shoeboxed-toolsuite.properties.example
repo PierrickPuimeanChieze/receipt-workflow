@@ -8,3 +8,4 @@ noCategoryDir=noCategory
 clientId=0123456789245132486qsdsd 
 # Redirect url of the application you created in your settings
 redirectUrl=https://api.shoeboxed.com/v2/explorer/o2c.html 
+# destinataire

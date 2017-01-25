@@ -10,6 +10,8 @@ import com.dropbox.core.v2.files.FileMetadata;
 import com.dropbox.core.v2.users.FullAccount;
 import com.machinepublishers.jbrowserdriver.JBrowserDriver;
 import org.openqa.selenium.WebElement;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 import org.springframework.util.FileCopyUtils;
 
 import java.io.*;
@@ -20,10 +22,11 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 
-public class ExtractorMain {
+@Component
+public class ExtractorMain{
 
 
-    private static String dropboxPassword = "teocali@reschaotica.com";
+    private String dropboxPassword = "teocali@reschaotica.com";
     private final static String[] DROPBOX_SECRET_PATHS = new String[]{
             "./dropbox_client_secret.json",
             "/etc/shoeboxed-toolsuite/dropbox_client_secret.json",
@@ -31,11 +34,12 @@ public class ExtractorMain {
             "~/.shoeboxed-toolsuite/dropbox_client_secret.json"
     };
 
-    private final String DROPBOX_UPLOAD_PATH = "/cfp consulting/IN";
+    private final String DROPBOX_UPLOAD_PATH = "/cfp consulting/TEST";
 
 
     private String toSentCategory = "to send";
-    private String[] destinationDirs = {"C:\\Users\\ppc\\Test\\",};
+    @Value("${destinationDirs}")
+    private String destinationDir;
     private String noCategoryDir = "noCategoryDir";
     private static final String PROPERTY_NAME_TYPE = "type";
     private String[] specialCategoryMarkers = new String[]{PROPERTY_NAME_TYPE};
@@ -57,7 +61,7 @@ public class ExtractorMain {
         initShoeboxedService();
         initDropboxSDK();
         Properties confProperties = Utils.getConfProperties();
-        destinationDirs = confProperties.getProperty("destinationDirs").split(",");
+        destinationDir = confProperties.getProperty("destinationDirs");
     }
 
     private void initDropboxSDK() throws JsonReader.FileLoadException, IOException {
@@ -131,7 +135,6 @@ public class ExtractorMain {
     }
 
 
-
     /**
      * Retrieve and store the files from the API
      *
@@ -144,8 +147,6 @@ public class ExtractorMain {
 
         final Document[] documents = shoeboxedService.retrieveDocument(toSentCategory);
         for (Document document : documents) {
-
-
             try {
                 String fileName = String.format("%tF_%s_%s%s.pdf",
                         document.getIssued(),
@@ -161,27 +162,24 @@ public class ExtractorMain {
 
                 categorySubDirPath = categorySubDirPath.resolve(extractFirstDestinationCategory(document.getCategories()));
 
-                for (String destinationDir : destinationDirs) {
-                     Path finalSubDirTotalPath = Paths.get(destinationDir).resolve(todayPostDir).resolve(categorySubDirPath);
-                    File subDirTotal = finalSubDirTotalPath.toFile();
-                    if (!subDirTotal.exists()) {
-                        //noinspection ResultOfMethodCallIgnored
-                        subDirTotal.mkdirs();
-                    }
-
-                    File destinationFile = createDestinationFile(fileName, subDirTotal, null);
-
-                    //TODO eventually, try to pipe the stream directly to Dropbox, no local copy.
-                    try (final InputStream in = document.getAttachment().getUrl().openStream();
-                         final FileOutputStream out = new FileOutputStream(destinationFile)) {
-                        System.out.println("retrieving file " + destinationFile);
-                        FileCopyUtils.copy(in, out);
-                    }
-                    String replace = categorySubDirPath.resolve(destinationFile.getName()).toString().replace("\\", "/");
-                    uploadFile(destinationFile, replace);
-
-                    manageLog(replace);
+                Path finalSubDirTotalPath = Paths.get(destinationDir).resolve(todayPostDir).resolve(categorySubDirPath);
+                File subDirTotal = finalSubDirTotalPath.toFile();
+                if (!subDirTotal.exists()) {
+                    //noinspection ResultOfMethodCallIgnored
+                    subDirTotal.mkdirs();
                 }
+
+                File destinationFile = createDestinationFile(fileName, subDirTotal, null);
+
+                //TODO eventually, try to pipe the stream directly to Dropbox, no local copy.
+                try (final InputStream in = document.getAttachment().getUrl().openStream();
+                     final FileOutputStream out = new FileOutputStream(destinationFile)) {
+                    System.out.println("retrieving file " + destinationFile);
+                    FileCopyUtils.copy(in, out);
+                }
+                String replace = categorySubDirPath.resolve(destinationFile.getName()).toString().replace("\\", "/");
+                uploadFile(destinationFile, replace);
+                manageLog(replace);
 
             } catch (MultipleMainCategoriesException e) {
                 throw new MultipleMainCategoriesException("document " + document + " has Multiple Main Categories. See root cause for detail", e);
@@ -336,10 +334,10 @@ public class ExtractorMain {
         return "";
     }
 
-    public static void main(String[] args) throws Exception {
-        final ExtractorMain extractorMain = new ExtractorMain();
-        extractorMain.init();
-        extractorMain.retrieveAllFile();
+    public void run(String[] args) throws Exception {
+
+        init();
+        retrieveAllFile();
     }
 
     private void uploadFile(File fileToUpload, String fileName) throws DbxException, IOException {
@@ -351,7 +349,7 @@ public class ExtractorMain {
         FullAccount account = client.users().getCurrentAccount();
         // Upload "test.txt" to Dropbox
         try (InputStream in = new FileInputStream(fileToUpload)) {
-            FileMetadata metadata = client.files().uploadBuilder(DROPBOX_UPLOAD_PATH+"/"+fileName)
+            FileMetadata metadata = client.files().uploadBuilder(DROPBOX_UPLOAD_PATH + "/" + fileName)
                     .uploadAndFinish(in);
         }
     }

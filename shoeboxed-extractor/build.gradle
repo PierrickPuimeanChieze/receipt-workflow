@@ -22,7 +22,9 @@ repositories {
 
 
 dependencies {
-    compile 'org.springframework:spring-web:4.2.5.RELEASE' //used for the RestTemplate and UriComponentBuilder classes
+    compile 'org.springframework:spring-web:'+springVersion //used for the RestTemplate and UriComponentBuilder classes
+    compile 'org.springframework:spring-context:'+springVersion //used for the RestTemplate and UriComponentBuilder classes
+    compile 'org.springframework:spring-context-support:'+springVersion //used for the RestTemplate and UriComponentBuilder classes
     compile 'com.google.code.gson:gson:2.6.2'
     compile "org.projectlombok:lombok:1.16.8"
     compile project(':shoeboxed-common')
