@@ -11,6 +11,8 @@ import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.ui.velocity.VelocityEngineFactoryBean;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.Collections;
 import java.util.Properties;
 
 /**
@@ -33,18 +35,25 @@ public class ExtractorApplication {
     @Value("${clientId}")
     String clientId;
 
-    @Value("mail.uploadResult.to")
+    @Value("${mail.uploadResult.to}")
     String uploadResultDest;
-    @Value("mail.uploadResult.cc")
+    @Value("${mail.uploadResult.cc}")
     String uploadResultCc;
-    @Value("mail.uploadResult.subject")
+    @Value("${mail.uploadResult.subject}")
     private String uploadResultSubject;
+    @Value("${mail.uploadResult.from}")
+    private String uploadResultFrom;
 
     public static void main(String[] args) throws Exception {
         AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(ExtractorApplication.class);
         ctx.getBean(ExtractorMain.class).run(args);
+//        ctx.getBean(GmailService.class).sentExtractionResults(Collections.singletonList("TEST"));
     }
 
+    @Bean
+    public ExtractorMain extractorMain() throws GeneralSecurityException, IOException {
+        return new ExtractorMain(shoeboxedService(), gmailService());
+    }
     /**
      * Property placeholder configurer needed to process @Value annotations
      */
@@ -52,23 +61,10 @@ public class ExtractorApplication {
     public static PropertySourcesPlaceholderConfigurer propertyConfigurer() {
         return new PropertySourcesPlaceholderConfigurer();
     }
+
     @Bean
     public ShoeboxedService shoeboxedService() {
         return new ShoeboxedService(redirectUrl, clientId);
-    }
-
-    @Bean
-    public MailSender mailSender() {
-        JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
-        mailSender.setHost("smtp.gmail.com");
-        mailSender.setUsername("pierrick.puimean@gmail.com");
-        mailSender.setPassword("_V3r0N1qU3$");
-        return mailSender;
-    }
-
-    @Bean
-    public MailManager mailManager() throws IOException {
-        return new MailManager(mailSender(), velocityEngine(), uploadResultTemplateMessage());
     }
 
     @Bean
@@ -93,5 +89,10 @@ public class ExtractorApplication {
         return uploadTemplateMessage;
     }
 
+    @Bean
+    public GmailService gmailService() throws GeneralSecurityException, IOException {
+        GmailService gmailService = new GmailService(velocityEngine(), uploadResultDest, uploadResultCc, uploadResultFrom, uploadResultSubject);
+        return gmailService;
+    }
 }
 

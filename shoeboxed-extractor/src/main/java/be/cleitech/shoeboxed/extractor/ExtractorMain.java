@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.FileCopyUtils;
 
+import javax.mail.MessagingException;
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -21,7 +22,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 
-@Component
 public class ExtractorMain{
 
 
@@ -59,7 +59,6 @@ public class ExtractorMain{
     private String dropboxAccessToken;
     private MailManager mailManager;
 
-    @Autowired
     public ExtractorMain(ShoeboxedService shoeboxedService, MailManager mailManager) {
         this.shoeboxedService = shoeboxedService;
         this.mailManager = mailManager;
@@ -140,7 +139,7 @@ public class ExtractorMain{
      * @throws IOException                     Problem when reading or writing a file
      * @throws MultipleMainCategoriesException If one of the files has multiple Main category
      */
-    private void retrieveAllFile() throws IOException, MultipleMainCategoriesException, DbxException {
+    private void retrieveAllFile() throws IOException, MultipleMainCategoriesException, DbxException, MessagingException {
 
         String todayPostDir = String.format("postDate_%tF", new Date());
 
@@ -169,13 +168,7 @@ public class ExtractorMain{
                 }
 
                 File destinationFile = createDestinationFile(fileName, subDirTotal, null);
-
-                //TODO eventually, try to pipe the stream directly to Dropbox, no local copy.
-                try (final InputStream in = document.getAttachment().getUrl().openStream();
-                     final FileOutputStream out = new FileOutputStream(destinationFile)) {
-                    System.out.println("retrieving file " + destinationFile);
-                    FileCopyUtils.copy(in, out);
-                }
+                copyDocumentToLocal(document, destinationFile);
                 String replace = categorySubDirPath.resolve(destinationFile.getName()).toString().replace("\\", "/");
                 uploadFile(destinationFile, replace);
                 manageLog(replace);
@@ -190,6 +183,15 @@ public class ExtractorMain{
 
         }
         mailManager.sentExtractionResults(fileList);
+    }
+
+    private void copyDocumentToLocal(Document document, File destinationFile) throws IOException {
+        //TODO eventually, try to pipe the stream directly to Dropbox, no local copy.
+        try (final InputStream in = document.getAttachment().getUrl().openStream();
+             final FileOutputStream out = new FileOutputStream(destinationFile)) {
+            System.out.println("retrieving file " + destinationFile);
+            FileCopyUtils.copy(in, out);
+        }
     }
 
     private void manageLog(String destinationFile) {

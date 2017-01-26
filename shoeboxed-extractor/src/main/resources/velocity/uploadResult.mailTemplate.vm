@@ -5,3 +5,6 @@ Vous trouverez dans le repertoire IN de DropBox une serie de fichiers, avec les 
 #foreach ($file in $fileList)
     * $file
 #end
+
+Bien à vous,
+Pierrick Puimean-Chieze

@@ -15,3 +15,5 @@ mail.uploadResult.subject=Upload Result Subject
 mail.uploadResult.to=toto@gmail.com
 # Cc for the uploadResult mail
 mail.uploadResult.cc=toto@gmail.com
+# From for the uploadResult mail
+mail.uploadResult.from=toto@res.com

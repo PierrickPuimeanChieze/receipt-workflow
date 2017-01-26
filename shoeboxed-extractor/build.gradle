@@ -25,11 +25,16 @@ dependencies {
     compile 'org.springframework:spring-web:'+springVersion //used for the RestTemplate and UriComponentBuilder classes
     compile 'org.springframework:spring-context:'+springVersion //used for the RestTemplate and UriComponentBuilder classes
     compile 'org.springframework:spring-context-support:'+springVersion //used for the RestTemplate and UriComponentBuilder classes
+
+    compile 'com.google.api-client:google-api-client:1.22.0'
+    compile 'com.google.oauth-client:google-oauth-client-jetty:1.22.0'
+    compile 'com.google.apis:google-api-services-gmail:v1-rev56-1.22.0'
+
     compile 'com.google.code.gson:gson:2.6.2'
     compile "org.projectlombok:lombok:1.16.8"
     compile project(':shoeboxed-common')
     compile 'com.dropbox.core:dropbox-core-sdk:2.1.2'
-    compile group: 'javax.mail', name: 'mail', version: '1.4.7'
+    compile group: 'javax.mail', name: 'mail', version: '1.4.3'
     compile 'org.apache.velocity:velocity:1.7'
     compile 'org.apache.velocity:velocity-tools:2.0'
 
