@@ -1,4 +1,4 @@
-package com.cleitech.shoeboxed;
+package be.cleitech.shoeboxed;
 
 import java.io.File;
 import java.io.FileInputStream;

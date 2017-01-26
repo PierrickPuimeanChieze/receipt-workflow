@@ -1,16 +1,14 @@
 package be.cleitech.shoeboxed.extractor;
 
-import com.cleitech.shoeboxed.Utils;
-import com.cleitech.shoeboxed.commons.ShoeboxedService;
-import com.cleitech.shoeboxed.domain.Document;
+import be.cleitech.shoeboxed.Utils;
+import be.cleitech.shoeboxed.ShoeboxedService;
+import be.cleitech.shoeboxed.domain.Document;
 import com.dropbox.core.*;
 import com.dropbox.core.json.JsonReader;
 import com.dropbox.core.v2.DbxClientV2;
 import com.machinepublishers.jbrowserdriver.JBrowserDriver;
 import org.openqa.selenium.WebElement;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 import org.springframework.util.FileCopyUtils;
 
 import javax.mail.MessagingException;
@@ -334,7 +332,6 @@ public class ExtractorMain{
 
     public void run(String[] args) throws Exception {
 
-        shoeboxedService.authorize();
         initDropboxSDK();
         retrieveAllFile();
     }

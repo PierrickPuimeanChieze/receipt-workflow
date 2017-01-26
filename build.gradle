@@ -3,3 +3,5 @@ group = "be.cleitech.shoeboxed"
 version = "1.0.0"
 
 ext.springVersion = '4.2.5.RELEASE'
+
+

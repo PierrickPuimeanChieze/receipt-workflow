@@ -1,18 +1,18 @@
 package be.cleitech.shoeboxed.extractor;
 
-import com.cleitech.shoeboxed.commons.ShoeboxedService;
+import be.cleitech.shoeboxed.ShoeboxedService;
+import be.cleitech.shoeboxed.domain.ProcessingState;
+import com.cleitech.shoeboxed.uploader.DriveService;
+import com.cleitech.shoeboxed.uploader.UploaderMain;
 import org.apache.velocity.app.VelocityEngine;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.*;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
-import org.springframework.mail.MailSender;
 import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.ui.velocity.VelocityEngineFactoryBean;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.util.Collections;
 import java.util.Properties;
 
 /**
@@ -28,8 +28,9 @@ import java.util.Properties;
 //                System.getenv("APPDATA") + "/shoeboxed-toolsuite/shoeboxed-toolsuite.properties",
 //                "~/.shoeboxed-toolsuite/shoeboxed-toolsuite.properties"
         })
-public class ExtractorApplication {
+public class Application {
 
+    //TODO add shoeboxed prefix
     @Value("${redirectUrl}")
     String redirectUrl;
     @Value("${clientId}")
@@ -44,16 +45,35 @@ public class ExtractorApplication {
     @Value("${mail.uploadResult.from}")
     private String uploadResultFrom;
 
+    @Value("${shoeboxed.uploadProcessingState:NEEDS_SYSTEM_PROCESSING}")
+    private ProcessingState shoeboxedProcessingStateForUpload;
+    @Value("${shoeboxed.uploadedDirName:uploaded}")
+    private String shoeboxedUploadedDirName;
+
     public static void main(String[] args) throws Exception {
-        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(ExtractorApplication.class);
-        ctx.getBean(ExtractorMain.class).run(args);
-//        ctx.getBean(GmailService.class).sentExtractionResults(Collections.singletonList("TEST"));
+        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(Application.class);
+        if (args.length < 1) {
+            System.err.println("expected process-to-ocr or extract-and-send");
+        }
+        String operation = args[0];
+        switch (operation) {
+            case "process-to-ocr":
+                ctx.getBean(UploaderMain.class).run(args);
+                break;
+            case "extract-and-send":
+                ctx.getBean(ExtractorMain.class).run(args);
+                break;
+            default:
+                System.err.println("Unknown operation " + operation);
+
+        }
     }
 
     @Bean
     public ExtractorMain extractorMain() throws GeneralSecurityException, IOException {
         return new ExtractorMain(shoeboxedService(), gmailService());
     }
+
     /**
      * Property placeholder configurer needed to process @Value annotations
      */
@@ -64,7 +84,9 @@ public class ExtractorApplication {
 
     @Bean
     public ShoeboxedService shoeboxedService() {
-        return new ShoeboxedService(redirectUrl, clientId);
+        ShoeboxedService shoeboxedService = new ShoeboxedService(redirectUrl, clientId, shoeboxedProcessingStateForUpload);
+        shoeboxedService.authorize();
+        return shoeboxedService;
     }
 
     @Bean
@@ -93,6 +115,16 @@ public class ExtractorApplication {
     public GmailService gmailService() throws GeneralSecurityException, IOException {
         GmailService gmailService = new GmailService(velocityEngine(), uploadResultDest, uploadResultCc, uploadResultFrom, uploadResultSubject);
         return gmailService;
+    }
+
+    @Bean
+    public DriveService driveService() throws GeneralSecurityException, IOException {
+        return new DriveService();
+    }
+
+    @Bean
+    public UploaderMain uploaderMain() throws GeneralSecurityException, IOException {
+        return new UploaderMain(driveService(), shoeboxedService(), shoeboxedUploadedDirName);
     }
 }
 

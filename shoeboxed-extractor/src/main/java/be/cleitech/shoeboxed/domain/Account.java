@@ -1,4 +1,4 @@
-package com.cleitech.shoeboxed.domain;
+package be.cleitech.shoeboxed.domain;
 
 /**
  * @author Pierrick Puimean-Chieze on 23-04-16.

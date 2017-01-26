@@ -21,7 +21,10 @@ import javax.mail.MessagingException;
 import javax.mail.Session;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStream;
 import java.security.GeneralSecurityException;
 import java.util.*;
 
@@ -70,12 +73,9 @@ public class GmailService implements MailManager {
     }
 
     private Credential authorize() throws IOException {
-        // Load client secrets.
-        InputStream in =
-                GmailService.class.getResourceAsStream("/client_secret.json");
 
         GoogleClientSecrets clientSecrets =
-                GoogleClientSecrets.load(JSON_FACTORY, new FileReader("./client_secret.json"));
+                GoogleClientSecrets.load(JSON_FACTORY, new FileReader("./google_client_secret.json"));
 
         // Build flow and trigger user authorization request.
         GoogleAuthorizationCodeFlow flow =

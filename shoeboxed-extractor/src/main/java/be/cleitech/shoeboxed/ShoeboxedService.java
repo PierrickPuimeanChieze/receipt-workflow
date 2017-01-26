@@ -1,8 +1,9 @@
-package com.cleitech.shoeboxed.commons;
+package be.cleitech.shoeboxed;
 
-import com.cleitech.shoeboxed.domain.Document;
-import com.cleitech.shoeboxed.domain.Documents;
-import com.cleitech.shoeboxed.domain.User;
+import be.cleitech.shoeboxed.domain.Document;
+import be.cleitech.shoeboxed.domain.Documents;
+import be.cleitech.shoeboxed.domain.ProcessingState;
+import be.cleitech.shoeboxed.domain.User;
 import com.machinepublishers.jbrowserdriver.JBrowserDriver;
 import com.machinepublishers.jbrowserdriver.Settings;
 import com.machinepublishers.jbrowserdriver.Timezone;
@@ -33,14 +34,13 @@ public class ShoeboxedService {
     private static final String SCOPE = "all";
     private String clientId;
     private String accessToken;
-    //    private static final String PROCESSING_STATE = "PROCESSED";
-    private static final String PROCESSING_STATE = "NEEDS_USER_PROCESSING";
-    //    private static final String PROCESSING_STATE = "NEED_SYSTEM_PROCESSING";
     private RestTemplate restTemplate = new RestTemplate();
+    private ProcessingState processingState;
 
-    public ShoeboxedService(String redirectUrl, String clientId) {
+    public ShoeboxedService(String redirectUrl, String clientId, ProcessingState processingStateForUpload) {
         this.redirectUrl = redirectUrl;
         this.clientId = clientId;
+        this.processingState = processingStateForUpload;
         HttpMessageConverter formHttpMessageConverter = new FormHttpMessageConverter();
         restTemplate.getMessageConverters().add(formHttpMessageConverter);
         restTemplate.getMessageConverters().add(new GsonHttpMessageConverter());
@@ -147,7 +147,7 @@ public class ShoeboxedService {
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("attachment", resourceToUpload);
         body.add("document", "{ \"processingState\": \"" +
-                PROCESSING_STATE +
+                processingState +
                 "\", \"type\":\"receipt\"}");
         HttpEntity entity = new HttpEntity<>(body, headers);
         final ResponseEntity<String> stringResponseEntity = restTemplate.postForEntity(url, entity, String.class);
