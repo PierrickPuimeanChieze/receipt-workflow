@@ -23,7 +23,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 
-public class ExtractorMain{
+public class PublishTask {
 
 
     private String dropboxPassword = "teocali@reschaotica.com";
@@ -60,7 +60,7 @@ public class ExtractorMain{
     private String dropboxAccessToken;
     private MailManager mailManager;
 
-    public ExtractorMain(ShoeboxedService shoeboxedService, MailManager mailManager) {
+    public PublishTask(ShoeboxedService shoeboxedService, MailManager mailManager) {
         this.shoeboxedService = shoeboxedService;
         this.mailManager = mailManager;
     }

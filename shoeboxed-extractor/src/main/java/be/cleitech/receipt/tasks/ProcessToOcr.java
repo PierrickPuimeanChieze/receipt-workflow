@@ -9,7 +9,7 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Set;
 
-public class UploaderMain {
+public class ProcessToOcr {
 
 
 
@@ -21,7 +21,7 @@ public class UploaderMain {
     private DriveService googleDriveService;
     private String uploadedDirName;
 
-    public UploaderMain(DriveService googleDriveService, ShoeboxedService shoeboxedService, String uploadedDirName) {
+    public ProcessToOcr(DriveService googleDriveService, ShoeboxedService shoeboxedService, String uploadedDirName) {
         this.googleDriveService = googleDriveService;
         this.shoeboxedService = shoeboxedService;
         this.uploadedDirName = uploadedDirName;

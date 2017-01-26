@@ -4,8 +4,8 @@ import be.cleitech.receipt.google.GmailService;
 import be.cleitech.receipt.shoeboxed.ShoeboxedService;
 import be.cleitech.receipt.shoeboxed.domain.ProcessingState;
 import be.cleitech.receipt.google.DriveService;
-import be.cleitech.receipt.tasks.ExtractorMain;
-import be.cleitech.receipt.tasks.UploaderMain;
+import be.cleitech.receipt.tasks.PublishTask;
+import be.cleitech.receipt.tasks.ProcessToOcr;
 import org.apache.velocity.app.VelocityEngine;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.*;
@@ -59,10 +59,10 @@ public class Application {
         String operation = args[0];
         switch (operation) {
             case "process-to-ocr":
-                ctx.getBean(UploaderMain.class).run(args);
+                ctx.getBean(ProcessToOcr.class).run(args);
                 break;
             case "extract-and-send":
-                ctx.getBean(ExtractorMain.class).run(args);
+                ctx.getBean(PublishTask.class).run(args);
                 break;
             default:
                 System.err.println("Unknown operation " + operation);
@@ -71,8 +71,8 @@ public class Application {
     }
 
     @Bean
-    public ExtractorMain extractorMain() throws GeneralSecurityException, IOException {
-        return new ExtractorMain(shoeboxedService(), gmailService());
+    public PublishTask extractorMain() throws GeneralSecurityException, IOException {
+        return new PublishTask(shoeboxedService(), gmailService());
     }
 
     /**
@@ -123,8 +123,8 @@ public class Application {
     }
 
     @Bean
-    public UploaderMain uploaderMain() throws GeneralSecurityException, IOException {
-        return new UploaderMain(driveService(), shoeboxedService(), shoeboxedUploadedDirName);
+    public ProcessToOcr uploaderMain() throws GeneralSecurityException, IOException {
+        return new ProcessToOcr(driveService(), shoeboxedService(), shoeboxedUploadedDirName);
     }
 }
 
