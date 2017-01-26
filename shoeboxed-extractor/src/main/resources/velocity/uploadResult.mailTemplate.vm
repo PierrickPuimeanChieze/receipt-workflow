@@ -1,0 +1,7 @@
+Bonjour,
+
+Vous trouverez dans le repertoire IN de DropBox une serie de fichiers, avec les noms suivants :
+
+#foreach ($file in $fileList)
+    * $file
+#end

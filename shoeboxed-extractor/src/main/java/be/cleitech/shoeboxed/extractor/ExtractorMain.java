@@ -6,10 +6,9 @@ import com.cleitech.shoeboxed.domain.Document;
 import com.dropbox.core.*;
 import com.dropbox.core.json.JsonReader;
 import com.dropbox.core.v2.DbxClientV2;
-import com.dropbox.core.v2.files.FileMetadata;
-import com.dropbox.core.v2.users.FullAccount;
 import com.machinepublishers.jbrowserdriver.JBrowserDriver;
 import org.openqa.selenium.WebElement;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.FileCopyUtils;
@@ -38,8 +37,10 @@ public class ExtractorMain{
 
 
     private String toSentCategory = "to send";
+
     @Value("${destinationDirs}")
     private String destinationDir;
+
     private String noCategoryDir = "noCategoryDir";
     private static final String PROPERTY_NAME_TYPE = "type";
     private String[] specialCategoryMarkers = new String[]{PROPERTY_NAME_TYPE};
@@ -56,13 +57,14 @@ public class ExtractorMain{
     private ShoeboxedService shoeboxedService;
     private DbxAppInfo appInfo;
     private String dropboxAccessToken;
+    private MailManager mailManager;
 
-    private void init() throws JsonReader.FileLoadException, IOException {
-        initShoeboxedService();
-        initDropboxSDK();
-        Properties confProperties = Utils.getConfProperties();
-        destinationDir = confProperties.getProperty("destinationDirs");
+    @Autowired
+    public ExtractorMain(ShoeboxedService shoeboxedService, MailManager mailManager) {
+        this.shoeboxedService = shoeboxedService;
+        this.mailManager = mailManager;
     }
+
 
     private void initDropboxSDK() throws JsonReader.FileLoadException, IOException {
         File dropboxAccessTokenFile = new File("./dropboxAccessToken");
@@ -82,10 +84,7 @@ public class ExtractorMain{
         }
     }
 
-    private void initShoeboxedService() throws IOException {
-        shoeboxedService = ShoeboxedService.createFromDefaultConfFilePath();
-        shoeboxedService.authorize();
-    }
+
 
     private String retrieveDropBoxAccessToken() throws JsonReader.FileLoadException, IOException {
         File dropBoxInfoFile = Utils.findConfFile(DROPBOX_SECRET_PATHS);
@@ -190,10 +189,7 @@ public class ExtractorMain{
 
 
         }
-        System.out.println("Final ordered list : ");
-        for (String s : fileList) {
-            System.out.println(s);
-        }
+        mailManager.sentExtractionResults(fileList);
     }
 
     private void manageLog(String destinationFile) {
@@ -336,7 +332,8 @@ public class ExtractorMain{
 
     public void run(String[] args) throws Exception {
 
-        init();
+        shoeboxedService.authorize();
+        initDropboxSDK();
         retrieveAllFile();
     }
 
@@ -345,11 +342,9 @@ public class ExtractorMain{
         DbxRequestConfig config = new DbxRequestConfig("shoeboxed-toolsuite");
         DbxClientV2 client = new DbxClientV2(config, dropboxAccessToken);
 
-        // Get current account info
-        FullAccount account = client.users().getCurrentAccount();
-        // Upload "test.txt" to Dropbox
+        // Upload file to Dropbox
         try (InputStream in = new FileInputStream(fileToUpload)) {
-            FileMetadata metadata = client.files().uploadBuilder(DROPBOX_UPLOAD_PATH + "/" + fileName)
+            client.files().uploadBuilder(DROPBOX_UPLOAD_PATH + "/" + fileName)
                     .uploadAndFinish(in);
         }
     }

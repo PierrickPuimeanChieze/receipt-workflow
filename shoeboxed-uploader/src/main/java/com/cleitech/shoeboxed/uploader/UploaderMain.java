@@ -17,7 +17,10 @@ import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 
-import java.io.*;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
@@ -132,7 +135,7 @@ public class UploaderMain {
     }
 
     private static ShoeboxedService getShoeboxedService() throws IOException {
-        shoeboxedService = ShoeboxedService.createFromDefaultConfFilePath();
+        shoeboxedService = new ShoeboxedService(null, null);
         shoeboxedService.authorize();
         return shoeboxedService;
     }

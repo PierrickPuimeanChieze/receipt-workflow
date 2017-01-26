@@ -8,4 +8,10 @@ noCategoryDir=noCategory
 clientId=0123456789245132486qsdsd 
 # Redirect url of the application you created in your settings
 redirectUrl=https://api.shoeboxed.com/v2/explorer/o2c.html 
-# destinataire
+
+#Subject of the upload Result mail
+mail.uploadResult.subject=Upload Result Subject
+# Recipient for the uploadResult mail
+mail.uploadResult.to=toto@gmail.com
+# Cc for the uploadResult mail
+mail.uploadResult.cc=toto@gmail.com
