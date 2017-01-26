@@ -6,13 +6,10 @@ import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInsta
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
-import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.drive.Drive;
-import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 
@@ -32,88 +29,17 @@ import java.util.Set;
  * Created by ppc on 1/26/2017.
  */
 public class DriveService {
-    /**
-     * Application name.
-     */
-    private static final String APPLICATION_NAME =
-            "Drive API Java Quickstart";
-
-    private final static String[] GOOGLE_CLIENT_SECRET_PATHS = new String[]{
-            "./google_client_secret.json"
-    };
-
-    /**
-     * Directory to store user credentials for this application.
-     */
-    private static final java.io.File DATA_STORE_DIR = new java.io.File(
-            System.getProperty("user.home"), ".credentials/drive-java-quickstart");
-
-    /**
-     * Global instance of the {@link FileDataStoreFactory}.
-     */
-    private static FileDataStoreFactory DATA_STORE_FACTORY;
-
-    /**
-     * Global instance of the JSON factory.
-     */
-    private static final JsonFactory JSON_FACTORY =
-            JacksonFactory.getDefaultInstance();
     private final Drive drive;
 
-    /**
-     * Global instance of the HTTP transport.
-     */
-    private HttpTransport HTTP_TRANSPORT;
-    /**
-     * Global instance of the scopes required by this quickstart.
-     * <p>
-     * If modifying these scopes, delete your previously saved credentials
-     * at ~/.credentials/drive-java-quickstart
-     */
-    private final List<String> SCOPES =
-            Collections.singletonList(DriveScopes.DRIVE_METADATA_READONLY);
 
-
-    public DriveService() throws GeneralSecurityException, IOException {
-        HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-        DATA_STORE_FACTORY = new FileDataStoreFactory(DATA_STORE_DIR);
-        Credential credential = authorize();
+    public DriveService(HttpTransport httpTransport, JsonFactory jsonFactory, HttpRequestInitializer credential, String applicationName) throws GeneralSecurityException, IOException {
         drive = new Drive.Builder(
-                HTTP_TRANSPORT, JSON_FACTORY, credential)
-                .setApplicationName(APPLICATION_NAME)
+                httpTransport, jsonFactory, credential)
+                .setApplicationName(applicationName)
                 .build();
 
     }
 
-    /**
-     * Creates an authorized Credential object.
-     *
-     * @return an authorized Credential object.
-     * @throws IOException
-     */
-    private Credential authorize() throws IOException {
-        // Load client secrets.
-        java.io.File s = Utils.findConfFile(GOOGLE_CLIENT_SECRET_PATHS);
-        if (s == null) {
-            throw new IOException("Unable to find client_secret.json in any of the default locations");
-        }
-        GoogleClientSecrets clientSecrets =
-                GoogleClientSecrets.load(JSON_FACTORY, new FileReader(s));
-
-        // Build flow and trigger user authorization request.
-        GoogleAuthorizationCodeFlow flow =
-                new GoogleAuthorizationCodeFlow.Builder(
-                        HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
-                        .setDataStoreFactory(DATA_STORE_FACTORY)
-                        .setScopes(Collections.singletonList("https://www.googleapis.com/auth/drive"))
-                        .setAccessType("offline")
-                        .build();
-        Credential credential = new AuthorizationCodeInstalledApp(
-                flow, new LocalServerReceiver()).authorize("user");
-        System.out.println(
-                "Credentials saved to " + DATA_STORE_DIR.getAbsolutePath());
-        return credential;
-    }
 
     public String retrieveFileId(String dirName) throws IOException {
         FileList result = drive.files().list()

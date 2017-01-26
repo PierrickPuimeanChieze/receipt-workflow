@@ -6,7 +6,6 @@ import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInsta
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
@@ -37,59 +36,33 @@ public class GmailService implements MailManager {
     private static final JsonFactory JSON_FACTORY =
             JacksonFactory.getDefaultInstance();
     private final Gmail gmail;
+    private JsonFactory jsonFactory;
     private VelocityEngine velocityEngine;
     private final String uploadResultDest;
     private final String uploadResultCc;
     private final String uploadResultSubject;
-    /**
-     * Global instance of the {@link FileDataStoreFactory}.
-     */
-    private FileDataStoreFactory DATA_STORE_FACTORY;
-    /**
-     * Directory to store user credentials for this application.
-     */
-    private static final java.io.File DATA_STORE_DIR = new java.io.File(
-            System.getProperty("user.home"), ".credentials/gmail-java-quickstart");
-    private static final String APPLICATION_NAME =
-            "shoeboxed-toolsuite";
-    private HttpTransport HTTP_TRANSPORT;
-    private static final List<String> SCOPES =
-            Collections.singletonList(GmailScopes.GMAIL_SEND);
     private String uploadResultFrom;
 
-    public GmailService(VelocityEngine velocityEngine, String uploadResultDest, String uploadResultCc, String uploadResultFrom, String uploadResultSubject) throws GeneralSecurityException, IOException {
+    public GmailService(
+
+            HttpTransport httpTransport,
+            Credential credential,
+            JsonFactory jsonFactory, VelocityEngine velocityEngine,String applicationName,
+            String uploadResultDest,
+            String uploadResultCc,
+            String uploadResultFrom,
+            String uploadResultSubject) throws GeneralSecurityException, IOException {
         this.velocityEngine = velocityEngine;
         this.uploadResultDest = uploadResultDest;
         this.uploadResultCc = uploadResultCc;
         this.uploadResultFrom = uploadResultFrom;
         this.uploadResultSubject = uploadResultSubject;
 
-        HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-        DATA_STORE_FACTORY = new FileDataStoreFactory(DATA_STORE_DIR);
-        Credential credential = authorize();
-        gmail = new Gmail.Builder(HTTP_TRANSPORT, JSON_FACTORY, credential)
-                .setApplicationName(APPLICATION_NAME)
+        gmail = new Gmail.Builder(httpTransport, jsonFactory, credential)
+                .setApplicationName(applicationName)
                 .build();
     }
 
-    private Credential authorize() throws IOException {
-
-        GoogleClientSecrets clientSecrets =
-                GoogleClientSecrets.load(JSON_FACTORY, new FileReader("./google_client_secret.json"));
-
-        // Build flow and trigger user authorization request.
-        GoogleAuthorizationCodeFlow flow =
-                new GoogleAuthorizationCodeFlow.Builder(
-                        HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
-                        .setDataStoreFactory(DATA_STORE_FACTORY)
-                        .setAccessType("offline")
-                        .build();
-        Credential credential = new AuthorizationCodeInstalledApp(
-                flow, new LocalServerReceiver()).authorize("user");
-        System.out.println(
-                "Credentials saved to " + DATA_STORE_DIR.getAbsolutePath());
-        return credential;
-    }
 
     /**
      * Create a message from an email.
