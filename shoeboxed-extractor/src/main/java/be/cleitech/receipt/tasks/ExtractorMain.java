@@ -1,8 +1,11 @@
-package be.cleitech.shoeboxed.extractor;
+package be.cleitech.receipt.tasks;
 
-import be.cleitech.shoeboxed.Utils;
-import be.cleitech.shoeboxed.ShoeboxedService;
-import be.cleitech.shoeboxed.domain.Document;
+import be.cleitech.receipt.MailManager;
+import be.cleitech.receipt.Utils;
+import be.cleitech.receipt.dropbox.DropboxAuthenticationOption;
+import be.cleitech.receipt.shoeboxed.MultipleMainCategoriesException;
+import be.cleitech.receipt.shoeboxed.ShoeboxedService;
+import be.cleitech.receipt.shoeboxed.domain.Document;
 import com.dropbox.core.*;
 import com.dropbox.core.json.JsonReader;
 import com.dropbox.core.v2.DbxClientV2;

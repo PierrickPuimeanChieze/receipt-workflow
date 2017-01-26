@@ -1,5 +1,6 @@
-package be.cleitech.shoeboxed.extractor;
+package be.cleitech.receipt.google;
 
+import be.cleitech.receipt.MailManager;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
@@ -24,7 +25,6 @@ import javax.mail.internet.MimeMessage;
 import java.io.ByteArrayOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.security.GeneralSecurityException;
 import java.util.*;
 
@@ -54,7 +54,7 @@ public class GmailService implements MailManager {
             "shoeboxed-toolsuite";
     private HttpTransport HTTP_TRANSPORT;
     private static final List<String> SCOPES =
-            Arrays.asList(GmailScopes.GMAIL_SEND);
+            Collections.singletonList(GmailScopes.GMAIL_SEND);
     private String uploadResultFrom;
 
     public GmailService(VelocityEngine velocityEngine, String uploadResultDest, String uploadResultCc, String uploadResultFrom, String uploadResultSubject) throws GeneralSecurityException, IOException {
@@ -120,7 +120,7 @@ public class GmailService implements MailManager {
      * @return the MimeMessage to be used to send email
      * @throws MessagingException
      */
-    public static MimeMessage createEmail(String to,
+    private static MimeMessage createEmail(String to,
                                           String from,
                                           String cc,
                                           String subject,

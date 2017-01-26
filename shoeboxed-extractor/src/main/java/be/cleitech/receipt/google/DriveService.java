@@ -1,6 +1,6 @@
-package com.cleitech.shoeboxed.uploader;
+package be.cleitech.receipt.google;
 
-import be.cleitech.shoeboxed.Utils;
+import be.cleitech.receipt.Utils;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;

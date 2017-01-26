@@ -1,9 +1,11 @@
-package be.cleitech.shoeboxed.extractor;
+package be.cleitech.receipt;
 
-import be.cleitech.shoeboxed.ShoeboxedService;
-import be.cleitech.shoeboxed.domain.ProcessingState;
-import com.cleitech.shoeboxed.uploader.DriveService;
-import com.cleitech.shoeboxed.uploader.UploaderMain;
+import be.cleitech.receipt.google.GmailService;
+import be.cleitech.receipt.shoeboxed.ShoeboxedService;
+import be.cleitech.receipt.shoeboxed.domain.ProcessingState;
+import be.cleitech.receipt.google.DriveService;
+import be.cleitech.receipt.tasks.ExtractorMain;
+import be.cleitech.receipt.tasks.UploaderMain;
 import org.apache.velocity.app.VelocityEngine;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.*;
@@ -19,7 +21,6 @@ import java.util.Properties;
  * Created by ppc on 1/25/2017.
  */
 @Configuration
-@ComponentScan("be.cleitech.shoeboxed.extractor") // search the com.company package for @Component classes
 //TODO manage mulitple possible path
 @PropertySource(
         {"file:./shoeboxed-toolsuite.properties"
@@ -113,8 +114,7 @@ public class Application {
 
     @Bean
     public GmailService gmailService() throws GeneralSecurityException, IOException {
-        GmailService gmailService = new GmailService(velocityEngine(), uploadResultDest, uploadResultCc, uploadResultFrom, uploadResultSubject);
-        return gmailService;
+        return new GmailService(velocityEngine(), uploadResultDest, uploadResultCc, uploadResultFrom, uploadResultSubject);
     }
 
     @Bean

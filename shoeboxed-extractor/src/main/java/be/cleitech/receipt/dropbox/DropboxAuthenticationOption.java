@@ -1,4 +1,4 @@
-package be.cleitech.shoeboxed.extractor;
+package be.cleitech.receipt.dropbox;
 
 import com.machinepublishers.jbrowserdriver.JBrowserDriver;
 

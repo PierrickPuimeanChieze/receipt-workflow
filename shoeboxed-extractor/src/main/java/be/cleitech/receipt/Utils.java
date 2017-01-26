@@ -1,4 +1,4 @@
-package be.cleitech.shoeboxed;
+package be.cleitech.receipt;
 
 import java.io.File;
 import java.io.FileInputStream;

@@ -1,9 +1,9 @@
-package be.cleitech.shoeboxed;
+package be.cleitech.receipt.shoeboxed;
 
-import be.cleitech.shoeboxed.domain.Document;
-import be.cleitech.shoeboxed.domain.Documents;
-import be.cleitech.shoeboxed.domain.ProcessingState;
-import be.cleitech.shoeboxed.domain.User;
+import be.cleitech.receipt.shoeboxed.domain.Document;
+import be.cleitech.receipt.shoeboxed.domain.Documents;
+import be.cleitech.receipt.shoeboxed.domain.ProcessingState;
+import be.cleitech.receipt.shoeboxed.domain.User;
 import com.machinepublishers.jbrowserdriver.JBrowserDriver;
 import com.machinepublishers.jbrowserdriver.Settings;
 import com.machinepublishers.jbrowserdriver.Timezone;

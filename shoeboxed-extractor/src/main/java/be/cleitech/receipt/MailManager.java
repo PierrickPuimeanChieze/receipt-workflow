@@ -1,4 +1,4 @@
-package be.cleitech.shoeboxed.extractor;
+package be.cleitech.receipt;
 
 import javax.mail.MessagingException;
 import java.util.Collection;

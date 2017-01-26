@@ -1,6 +1,7 @@
-package com.cleitech.shoeboxed.uploader;
+package be.cleitech.receipt.tasks;
 
-import be.cleitech.shoeboxed.ShoeboxedService;
+import be.cleitech.receipt.google.DriveService;
+import be.cleitech.receipt.shoeboxed.ShoeboxedService;
 import com.google.api.services.drive.model.File;
 
 import java.io.IOException;

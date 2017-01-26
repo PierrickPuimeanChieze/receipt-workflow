@@ -1,4 +1,4 @@
-package be.cleitech.shoeboxed.domain;
+package be.cleitech.receipt.shoeboxed.domain;
 
 /**
  * Created by ppc on 1/26/2017.
