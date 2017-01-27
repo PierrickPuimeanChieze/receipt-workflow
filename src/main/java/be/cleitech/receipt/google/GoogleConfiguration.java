@@ -32,13 +32,7 @@ import java.util.Properties;
  * Created by ppc on 1/26/2017.
  */
 @Configuration
-@PropertySource(
-        {"file:./shoeboxed-toolsuite.properties"
-//                ,
-//                "/etc/shoeboxed-toolsuite/shoeboxed-toolsuite.properties",
-//                System.getenv("APPDATA") + "/shoeboxed-toolsuite/shoeboxed-toolsuite.properties",
-//                "~/.shoeboxed-toolsuite/shoeboxed-toolsuite.properties"
-        })
+
 public class GoogleConfiguration {
     @Value("${mail.uploadResult.to}")
     String uploadResultDest;

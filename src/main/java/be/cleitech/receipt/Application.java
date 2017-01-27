@@ -20,13 +20,6 @@ import java.security.GeneralSecurityException;
  * Created by ppc on 1/25/2017.
  */
 //TODO manage mulitple possible path
-@PropertySource(
-        {"file:./shoeboxed-toolsuite.properties"
-//                ,
-//                "/etc/shoeboxed-toolsuite/shoeboxed-toolsuite.properties",
-//                System.getenv("APPDATA") + "/shoeboxed-toolsuite/shoeboxed-toolsuite.properties",
-//                "~/.shoeboxed-toolsuite/shoeboxed-toolsuite.properties"
-        })
 @Import(GoogleConfiguration.class)
 @SpringBootApplication(exclude = {EmbeddedServletContainerAutoConfiguration.class,
         WebMvcAutoConfiguration.class})
@@ -43,7 +36,7 @@ public class Application {
 
     @Value("${shoeboxed.uploadProcessingState:NEEDS_SYSTEM_PROCESSING}")
     private ProcessingState shoeboxedProcessingStateForUpload;
-    @Value("${shoeboxed.uploadedDirName:uploaded}")
+    @Value("${processToOcr.uploadedDirName:uploaded}")
     private String shoeboxedUploadedDirName;
 
     public static void main(String[] args) throws Exception {
