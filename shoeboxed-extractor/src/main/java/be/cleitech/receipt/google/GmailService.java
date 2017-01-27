@@ -134,4 +134,13 @@ public class GmailService implements MailManager {
             throw new MessagingException("mail error", e);
         }
     }
+
+    @Override
+    public void sendErrorMessage(String[] args, String errorContent) {
+        Map<String, Object> model = new HashMap<>();
+        model.put("operationArgs", args);
+        model.put("errorContent", errorContent);
+        String text = VelocityEngineUtils.mergeTemplateIntoString(
+                velocityEngine, "velocity/errorMessage.mailTemplate.vm", "UTF-8", model);
+    }
 }
