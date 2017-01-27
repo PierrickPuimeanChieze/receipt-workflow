@@ -1,7 +1,41 @@
+buildscript {
+    repositories {
+        mavenCentral()
+
+    }
+}
+
+plugins {
+    id 'org.springframework.boot' version '1.4.4.RELEASE'
+}
+
+repositories {
+    mavenCentral()
+}
 
 group = "be.cleitech.shoeboxed"
 version = "1.0.0"
 
-ext.springVersion = '4.2.5.RELEASE'
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
 
+
+
+
+dependencies {
+    compile 'org.springframework.boot:spring-boot-starter-web'//used for the RestTemplate and UriComponentBuilder classes
+    compile 'org.springframework.boot:spring-boot-starter-mail'//used for the RestTemplate and UriComponentBuilder classes
+    compile 'org.springframework:spring-context-support'//used for the RestTemplate and UriComponentBuilder classes
+
+    compile 'com.google.api-client:google-api-client:1.22.0'
+    compile 'com.google.oauth-client:google-oauth-client-jetty:1.22.0'
+    compile 'com.google.apis:google-api-services-gmail:v1-rev56-1.22.0'
+    compile 'com.google.code.gson:gson:2.6.2'
+    compile 'com.google.apis:google-api-services-drive:v3-rev52-1.22.0'
+    compile 'com.machinepublishers:jbrowserdriver:0.17.3'
+    compile 'com.google.code.gson:gson:2.6.2'
+    compile 'com.dropbox.core:dropbox-core-sdk:2.1.2'
+    compile 'org.apache.velocity:velocity'
+
+}
 

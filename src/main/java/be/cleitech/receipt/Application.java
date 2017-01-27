@@ -7,6 +7,9 @@ import be.cleitech.receipt.tasks.ProcessToOcr;
 import be.cleitech.receipt.tasks.PublishTask;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.web.EmbeddedServletContainerAutoConfiguration;
+import org.springframework.boot.autoconfigure.web.WebMvcAutoConfiguration;
 import org.springframework.context.annotation.*;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 
@@ -16,7 +19,6 @@ import java.security.GeneralSecurityException;
 /**
  * Created by ppc on 1/25/2017.
  */
-@Configuration
 //TODO manage mulitple possible path
 @PropertySource(
         {"file:./shoeboxed-toolsuite.properties"
@@ -26,6 +28,8 @@ import java.security.GeneralSecurityException;
 //                "~/.shoeboxed-toolsuite/shoeboxed-toolsuite.properties"
         })
 @Import(GoogleConfiguration.class)
+@SpringBootApplication(exclude = {EmbeddedServletContainerAutoConfiguration.class,
+        WebMvcAutoConfiguration.class})
 public class Application {
 
     @Autowired
@@ -46,19 +50,21 @@ public class Application {
         AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(Application.class);
         if (args.length < 1) {
             System.err.println("expected process-to-ocr or extract-and-send");
+            System.exit(1);
         }
         String operation = args[0];
         switch (operation) {
             case "process-to-ocr":
                 ctx.getBean(ProcessToOcr.class).run(args);
-                break;
+                System.exit(0);
             case "extract-and-send":
                 ctx.getBean(PublishTask.class).run(args);
-                break;
             default:
                 System.err.println("Unknown operation " + operation);
+                System.exit(1);
 
         }
+
     }
 
     @Bean

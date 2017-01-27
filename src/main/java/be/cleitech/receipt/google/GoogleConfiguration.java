@@ -14,11 +14,12 @@ import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.gmail.GmailScopes;
 import org.apache.velocity.app.VelocityEngine;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
-import org.springframework.ui.velocity.VelocityEngineFactoryBean;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -49,10 +50,13 @@ public class GoogleConfiguration {
     private String uploadResultFrom;
     private String applicationName = "receipt-toolsuite";
 
+    @Autowired
+    VelocityEngine velocityEngine;
+
     @Bean
     public GmailService gmailService() throws GeneralSecurityException, IOException {
         return new GmailService(httpTransport(), authorize(), jsonFactory(),
-                velocityEngine(), applicationName, uploadResultDest, uploadResultCc, uploadResultFrom, uploadResultSubject);
+                velocityEngine, applicationName, uploadResultDest, uploadResultCc, uploadResultFrom, uploadResultSubject);
     }
 
     private HttpTransport httpTransport() throws GeneralSecurityException, IOException {
@@ -63,19 +67,6 @@ public class GoogleConfiguration {
     @Bean
     public DriveService driveService() throws GeneralSecurityException, IOException {
         return new DriveService(httpTransport(), jsonFactory(), authorize(), applicationName);
-    }
-
-    @Bean
-    public VelocityEngine velocityEngine() throws IOException {
-        VelocityEngineFactoryBean factory = new VelocityEngineFactoryBean();
-        Properties props = new Properties();
-        props.put("resource.loader", "class");
-        props.put("class.resource.loader.class",
-                "org.apache.velocity.runtime.resource.loader." +
-                        "ClasspathResourceLoader");
-        factory.setVelocityProperties(props);
-
-        return factory.createVelocityEngine();
     }
 
     @Bean
