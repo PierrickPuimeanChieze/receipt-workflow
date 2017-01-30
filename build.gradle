@@ -6,6 +6,7 @@ buildscript {
 }
 
 plugins {
+    id 'java'
     id 'org.springframework.boot' version '1.4.4.RELEASE'
 }
 
@@ -23,6 +24,7 @@ targetCompatibility = 1.8
 
 
 dependencies {
+    compile('org.springframework.boot:spring-boot-starter')
     compile 'org.springframework.boot:spring-boot-starter-web'//used for the RestTemplate and UriComponentBuilder classes
     compile 'org.springframework.boot:spring-boot-starter-mail'//used for the RestTemplate and UriComponentBuilder classes
     compile 'org.springframework:spring-context-support'//used for the RestTemplate and UriComponentBuilder classes

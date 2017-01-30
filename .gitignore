@@ -1,8 +1,5 @@
 /.idea
 /build
-/shoeboxed-toolsuite.properties
+/application.properties
 .gradle/
-shoeboxed-common/build/
-shoeboxed-extractor/build/
-shoeboxed-uploader/build/
 /*client_secret.json

@@ -7,6 +7,8 @@ import be.cleitech.receipt.tasks.ProcessToOcr;
 import be.cleitech.receipt.tasks.PublishTask;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.web.EmbeddedServletContainerAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.WebMvcAutoConfiguration;
@@ -21,7 +23,8 @@ import java.security.GeneralSecurityException;
  */
 //TODO manage mulitple possible path
 @Import(GoogleConfiguration.class)
-@SpringBootApplication(exclude = {EmbeddedServletContainerAutoConfiguration.class,
+@SpringBootApplication
+        (exclude = {EmbeddedServletContainerAutoConfiguration.class,
         WebMvcAutoConfiguration.class})
 public class Application {
 
@@ -39,24 +42,39 @@ public class Application {
     @Value("${processToOcr.uploadedDirName:uploaded}")
     private String shoeboxedUploadedDirName;
 
-    public static void main(String[] args) throws Exception {
-        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(Application.class);
-        if (args.length < 1) {
-            System.err.println("expected process-to-ocr or extract-and-send");
-            System.exit(1);
-        }
-        String operation = args[0];
-        switch (operation) {
-            case "process-to-ocr":
-                ctx.getBean(ProcessToOcr.class).run(args);
-                System.exit(0);
-            case "extract-and-send":
-                ctx.getBean(PublishTask.class).run(args);
-            default:
-                System.err.println("Unknown operation " + operation);
-                System.exit(1);
 
-        }
+
+    public static void main(String[] args) throws Exception {
+        SpringApplication.run(Application.class);
+    }
+    public CommandLineRunner commandLineRunner() {
+        return
+        new CommandLineRunner() {
+
+            @Override
+            public void run(String... args) throws Exception {
+                AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(Application.class);
+                if (args.length < 1) {
+                    System.err.println("expected process-to-ocr or extract-and-publish");
+                    System.exit(1);
+                }
+                String operation = args[0];
+                switch (operation) {
+                    case "process-to-ocr":
+                        ctx.getBean(ProcessToOcr.class).run(args);
+                        System.exit(0);
+                    case "extract-and-publish":
+                        ctx.getBean(PublishTask.class).run(args);
+                    case "test-conf":
+                        System.out.println("YOLO");
+                    default:
+                        System.err.println("Unknown operation " + operation);
+                        System.exit(1);
+
+                }
+            }
+        };
+
 
     }
 
