@@ -1,16 +1,13 @@
 package be.cleitech.receipt.tasks;
 
 import be.cleitech.receipt.MailManager;
-import be.cleitech.receipt.Utils;
-import be.cleitech.receipt.dropbox.DropboxAuthenticationOption;
+import be.cleitech.receipt.dropbox.DropboxService;
 import be.cleitech.receipt.shoeboxed.MultipleMainCategoriesException;
 import be.cleitech.receipt.shoeboxed.ShoeboxedService;
 import be.cleitech.receipt.shoeboxed.domain.Document;
-import com.dropbox.core.*;
-import com.dropbox.core.json.JsonReader;
-import com.dropbox.core.v2.DbxClientV2;
-import com.machinepublishers.jbrowserdriver.JBrowserDriver;
-import org.openqa.selenium.WebElement;
+import com.dropbox.core.DbxAppInfo;
+import com.dropbox.core.DbxAuthFinish;
+import com.dropbox.core.DbxException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.FileCopyUtils;
 
@@ -26,16 +23,7 @@ import java.util.TreeSet;
 public class PublishTask {
 
 
-    private String dropboxPassword = "teocali@reschaotica.com";
-    private final static String[] DROPBOX_SECRET_PATHS = new String[]{
-            "./dropbox_client_secret.json",
-            "/etc/shoeboxed-toolsuite/dropbox_client_secret.json",
-            System.getenv("APPDATA") + "/shoeboxed-toolsuite/dropbox_client_secret.json",
-            "~/.shoeboxed-toolsuite/dropbox_client_secret.json"
-    };
-
-    private final String DROPBOX_UPLOAD_PATH = "/cfp consulting/TEST";
-
+    private DropboxService dropboxService;
 
     private String toSentCategory = "to send";
 
@@ -45,7 +33,6 @@ public class PublishTask {
     private String noCategoryDir = "noCategoryDir";
     private static final String PROPERTY_NAME_TYPE = "type";
     private String[] specialCategoryMarkers = new String[]{PROPERTY_NAME_TYPE};
-    private DbxAuthFinish authFinish;
 
     /**
      * The "main" categories
@@ -56,8 +43,7 @@ public class PublishTask {
     private Set<String> fileList = new TreeSet<>();
 
     private ShoeboxedService shoeboxedService;
-    private DbxAppInfo appInfo;
-    private String dropboxAccessToken;
+
     private MailManager mailManager;
 
     public PublishTask(ShoeboxedService shoeboxedService, MailManager mailManager) {
@@ -65,73 +51,6 @@ public class PublishTask {
         this.mailManager = mailManager;
     }
 
-
-    private void initDropboxSDK() throws JsonReader.FileLoadException, IOException {
-        File dropboxAccessTokenFile = new File("./dropboxAccessToken");
-        if (!dropboxAccessTokenFile.exists()) {
-            dropboxAccessToken = retrieveDropBoxAccessToken();
-            try (FileWriter fileWriter = new FileWriter(dropboxAccessTokenFile)) {
-                fileWriter.write(dropboxAccessToken);
-            }
-
-        } else {
-            try (
-                    FileReader fileReader = new FileReader(dropboxAccessTokenFile);
-                    BufferedReader bufferedReader = new BufferedReader(fileReader)
-            ) {
-                dropboxAccessToken = bufferedReader.readLine();
-            }
-        }
-    }
-
-
-
-    private String retrieveDropBoxAccessToken() throws JsonReader.FileLoadException, IOException {
-        File dropBoxInfoFile = Utils.findConfFile(DROPBOX_SECRET_PATHS);
-        if (dropBoxInfoFile == null) {
-            throw new FileNotFoundException("Unable to found dropbox client secret file");
-        }
-        appInfo = DbxAppInfo.Reader.readFromFile(dropBoxInfoFile);
-
-        DbxRequestConfig requestConfig = new DbxRequestConfig("shoeboxed-toolsuite");
-        DbxWebAuth webAuth = new DbxWebAuth(requestConfig, appInfo);
-        DbxWebAuth.Request webAuthRequest = DbxWebAuth.newRequestBuilder()
-                .withNoRedirect()
-                .build();
-
-        String authorizeUrl = webAuth.authorize(webAuthRequest);
-        System.out.println("Go to " + authorizeUrl);
-
-        String code = new BufferedReader(new InputStreamReader(System.in)).readLine();
-        if (code == null) {
-            //FIXME : put an exception
-            throw new RuntimeException("code==null");
-        }
-        //TODO log this shit
-        System.out.println("Authorization Code :" + code);
-        code = code.trim();
-        try {
-            authFinish = webAuth.finishFromCode(code);
-        } catch (DbxException ex) {
-            throw new RuntimeException("Error in DbxWebAuth.authorize: " + ex.getMessage());
-        }
-
-
-        System.out.println("Authorization complete.");
-        System.out.println("- User ID: " + authFinish.getUserId());
-        System.out.println("- Access Token: " + authFinish.getAccessToken());
-        return authFinish.getAccessToken();
-    }
-
-    private void findAndInputLogin(JBrowserDriver driver) throws DropboxAuthenticationOption {
-        for (WebElement login_email_element : driver.findElementsByName("login_email")) {
-            if (login_email_element.getTagName().equalsIgnoreCase("input")) {
-                login_email_element.sendKeys(dropboxPassword);
-                return;
-            }
-        }
-        throw new DropboxAuthenticationOption("Unable to find a login Input field", driver);
-    }
 
 
     /**
@@ -171,7 +90,7 @@ public class PublishTask {
                 File destinationFile = createDestinationFile(fileName, subDirTotal, null);
                 copyDocumentToLocal(document, destinationFile);
                 String replace = categorySubDirPath.resolve(destinationFile.getName()).toString().replace("\\", "/");
-                uploadFile(destinationFile, replace);
+                dropboxService.uploadFile(destinationFile, replace, this);
                 manageLog(replace);
 
             } catch (MultipleMainCategoriesException e) {
@@ -294,28 +213,6 @@ public class PublishTask {
         return false;
     }
 
-    /**
-     * Parse note info, extract information under type as type=<value>
-     *
-     * @param notes the notes to parse
-     * @return the value associated to key type, or null
-     */
-    private String extractTypeInfoFromNotes(String notes) {
-        if (notes == null) {
-            return "";
-        }
-        Properties notesP = new Properties();
-        try {
-            notesP.load(new StringReader(notes));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        final String receiptType = notesP.getProperty(PROPERTY_NAME_TYPE);
-        if (receiptType == null) {
-            return "";
-        }
-        return "_" + receiptType;
-    }
 
     /**
      * Parse catgories, searching category starting with <code>{@link #PROPERTY_NAME_TYPE}:</code>
@@ -335,20 +232,8 @@ public class PublishTask {
 
     public void run(String[] args) throws Exception {
 
-        initDropboxSDK();
+        dropboxService.initDropboxSDK();
         retrieveAllFile();
-    }
-
-    private void uploadFile(File fileToUpload, String fileName) throws DbxException, IOException {
-        // Create Dropbox client
-        DbxRequestConfig config = new DbxRequestConfig("shoeboxed-toolsuite");
-        DbxClientV2 client = new DbxClientV2(config, dropboxAccessToken);
-
-        // Upload file to Dropbox
-        try (InputStream in = new FileInputStream(fileToUpload)) {
-            client.files().uploadBuilder(DROPBOX_UPLOAD_PATH + "/" + fileName)
-                    .uploadAndFinish(in);
-        }
     }
 
 
