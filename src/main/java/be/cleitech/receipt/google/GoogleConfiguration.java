@@ -16,24 +16,25 @@ import com.google.api.services.gmail.GmailScopes;
 import org.apache.velocity.app.VelocityEngine;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.PropertySource;
+import org.springframework.context.annotation.Import;
 
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
 
 /**
  * Created by ppc on 1/26/2017.
  */
 @Configuration
-
 public class GoogleConfiguration {
+
+    @Value("${credentials.directory}")
+    File credentialDirectory;
     @Value("${mail.uploadResult.to}")
     String uploadResultDest;
     @Value("${mail.uploadResult.cc}")
@@ -49,7 +50,7 @@ public class GoogleConfiguration {
 
     @Bean
     public GmailService gmailService() throws GeneralSecurityException, IOException {
-        return new GmailService(httpTransport(), authorize(), jsonFactory(),
+        return new GmailService(httpTransport(), googleCredentials(), jsonFactory(),
                 velocityEngine, applicationName, uploadResultDest, uploadResultCc, uploadResultFrom, uploadResultSubject);
     }
 
@@ -60,14 +61,13 @@ public class GoogleConfiguration {
 
     @Bean
     public DriveService driveService() throws GeneralSecurityException, IOException {
-        return new DriveService(httpTransport(), jsonFactory(), authorize(), applicationName);
+        return new DriveService(httpTransport(), jsonFactory(), googleCredentials(), applicationName);
     }
 
     @Bean
     public DataStoreFactory googleCredentialsDataStoreFactory() throws IOException {
 
-        return new FileDataStoreFactory(new java.io.File(
-                System.getProperty("user.home"), ".credentials/receipt-toolsuite/"));
+        return new FileDataStoreFactory(credentialDirectory);
 
     }
 
@@ -77,7 +77,7 @@ public class GoogleConfiguration {
                 DriveScopes.DRIVE);
     }
 
-    private Credential authorize() throws IOException, GeneralSecurityException {
+    private Credential googleCredentials() throws IOException, GeneralSecurityException {
 
         GoogleClientSecrets clientSecrets =
                 GoogleClientSecrets.load(jsonFactory(), new FileReader("./google_client_secret.json"));

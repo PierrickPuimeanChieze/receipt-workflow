@@ -28,7 +28,7 @@ import java.util.Map;
 /**
  * @author Pierrick Puimean-Chieze on 27-12-16.
  */
-public class ShoeboxedService {
+public class ShoeboxedService implements AuthenticatedService{
     private String redirectUrl;
     private static final String RESPONSE_TYPE = "token";
     private static final String SCOPE = "all";

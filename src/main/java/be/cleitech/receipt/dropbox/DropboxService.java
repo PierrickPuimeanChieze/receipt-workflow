@@ -5,6 +5,7 @@ import be.cleitech.receipt.tasks.PublishTask;
 import com.dropbox.core.*;
 import com.dropbox.core.json.JsonReader;
 import com.dropbox.core.v2.DbxClientV2;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.io.*;
 
@@ -25,8 +26,10 @@ public class DropboxService {
 
     private DbxAppInfo appInfo;
 
+    @Value("${credentials.directory}/dropboxAcessToken")
+    File dropboxAccessTokenFile;
+
     public void initDropboxSDK() throws JsonReader.FileLoadException, IOException {
-        File dropboxAccessTokenFile = new File("./dropboxAccessToken");
         if (!dropboxAccessTokenFile.exists()) {
             dropboxAccessToken = retrieveDropBoxAccessToken();
             try (FileWriter fileWriter = new FileWriter(dropboxAccessTokenFile)) {

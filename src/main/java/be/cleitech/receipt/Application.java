@@ -5,6 +5,10 @@ import be.cleitech.receipt.shoeboxed.ShoeboxedService;
 import be.cleitech.receipt.shoeboxed.domain.ProcessingState;
 import be.cleitech.receipt.tasks.ProcessToOcr;
 import be.cleitech.receipt.tasks.PublishTask;
+import com.google.api.client.auth.oauth2.StoredCredential;
+import com.google.api.client.googleapis.notifications.StoredChannel;
+import com.google.api.client.util.store.DataStore;
+import com.google.api.client.util.store.DataStoreFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -25,7 +29,7 @@ import java.security.GeneralSecurityException;
 @Import(GoogleConfiguration.class)
 @SpringBootApplication
         (exclude = {EmbeddedServletContainerAutoConfiguration.class,
-        WebMvcAutoConfiguration.class})
+                WebMvcAutoConfiguration.class})
 public class Application {
 
     @Autowired
@@ -43,37 +47,14 @@ public class Application {
     private String shoeboxedUploadedDirName;
 
 
-
     public static void main(String[] args) throws Exception {
-        SpringApplication.run(Application.class);
+        SpringApplication.run(Application.class, args);
     }
+
+    @Bean
     public CommandLineRunner commandLineRunner() {
         return
-        new CommandLineRunner() {
-
-            @Override
-            public void run(String... args) throws Exception {
-                AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(Application.class);
-                if (args.length < 1) {
-                    System.err.println("expected process-to-ocr or extract-and-publish");
-                    System.exit(1);
-                }
-                String operation = args[0];
-                switch (operation) {
-                    case "process-to-ocr":
-                        ctx.getBean(ProcessToOcr.class).run(args);
-                        System.exit(0);
-                    case "extract-and-publish":
-                        ctx.getBean(PublishTask.class).run(args);
-                    case "test-conf":
-                        System.out.println("YOLO");
-                    default:
-                        System.err.println("Unknown operation " + operation);
-                        System.exit(1);
-
-                }
-            }
-        };
+                new OperationCommandLineRunner();
 
 
     }
@@ -99,11 +80,46 @@ public class Application {
     }
 
 
-
-
     @Bean
     public ProcessToOcr uploaderMain() throws GeneralSecurityException, IOException {
         return new ProcessToOcr(googleConfiguration.driveService(), shoeboxedService(), shoeboxedUploadedDirName);
+    }
+
+    public static class OperationCommandLineRunner implements CommandLineRunner {
+
+        @Autowired
+        ProcessToOcr processToOcr;
+        @Autowired
+        PublishTask publishTask;
+        @Autowired
+        DataStoreFactory dataStoreFactory;
+
+        @Override
+        public void run(String... args) throws Exception {
+            if (args.length < 1) {
+                System.err.println("expected process-to-ocr or extract-and-publish");
+                System.exit(1);
+            }
+            String operation = args[0];
+            switch (operation) {
+                case "process-to-ocr":
+                    processToOcr.run(args);
+                    System.exit(0);
+                case "extract-and-publish":
+                    publishTask.run(args);
+                    System.exit(0);
+                case "test-conf":
+
+                    DataStore<StoredCredential> defaultDataStore = StoredCredential.getDefaultDataStore(dataStoreFactory);
+                    StoredCredential user = defaultDataStore.get("user");
+                    break;
+
+                default:
+                    System.err.println("Unknown operation " + operation);
+                    System.exit(1);
+
+            }
+        }
     }
 }
 
