@@ -6,6 +6,8 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -17,11 +19,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+
 /**
  * Created by ppc on 1/26/2017.
  */
 
 public class DriveService {
+    private static Log LOG = LogFactory.getLog(DriveService.class);
     private final Drive drive;
 
 
@@ -35,6 +39,7 @@ public class DriveService {
 
 
     public String retrieveFileId(String dirName) throws IOException {
+        LOG.debug("Retrieving drive id for dir "+dirName);
         FileList result = drive.files().list()
                 .set("q", "trashed = false and name='" +
                         dirName +
@@ -44,17 +49,14 @@ public class DriveService {
                 .execute();
         List<File> files = result.getFiles();
         if (files == null || files.size() == 0) {
-            //TODO Log this shit
             final String message = "No dir found named" + dirName;
             throw new RuntimeException(message);
         } else if (files.size() > 1) {
-            //TODO log this shit
             final String message = "More than on dir found named" + dirName;
             throw new RuntimeException(message);
         }
         File file = files.get(0);
-        System.out.println("FULL FILE EXTENSION:" + file.getFullFileExtension());
-        System.out.println("NAME:" + file.getName());
+        LOG.debug("Id is " + file.getId());
         return file.getId();
     }
 
@@ -69,7 +71,7 @@ public class DriveService {
     }
 
     public void moveFileToUploadedDir(String id, String sourceDir, String destDir) throws IOException {
-        System.out.println("move file " + id + " from to dir " + destDir);
+
         final Drive.Files.Update update = drive.files().update(id, null);
         update.setRemoveParents(sourceDir);
         update.setAddParents(destDir);
@@ -78,28 +80,29 @@ public class DriveService {
     }
 
     public Set<File> retrieveFileToUpload(String toUploadDirId) throws IOException {
+        LOG.debug("Retrieve files from "+toUploadDirId);
         Set<File> wholeSet = new HashSet<>();
 
         FileList fileResult = drive.files().list()
                 .set("q", "'" + toUploadDirId + "' in parents")
-                .setPageSize(1)
+                .setPageSize(50)
                 .setFields("files(id, originalFilename),nextPageToken")
                 .execute();
         List<File> fileToUpload = fileResult.getFiles();
         wholeSet.addAll(fileToUpload);
         String nextPageToken = fileResult.getNextPageToken();
-        System.out.printf("newxt Page Token : %s\n", nextPageToken);
+        LOG.debug("next Page Token : "+ nextPageToken);
         while (nextPageToken != null) {
-            System.out.println("retrieve new result");
+            LOG.debug("retrieve new result");
             fileResult = drive.files().list()
                     .set("q", "trashed = false and '" + toUploadDirId + "' in parents")
                     .setPageToken(nextPageToken)
-                    .setPageSize(1)
+                    .setPageSize(50)
                     .setFields("files(id, originalFilename),nextPageToken")
                     .execute();
             fileToUpload = fileResult.getFiles();
             nextPageToken = fileResult.getNextPageToken();
-            System.out.printf("newxt Page Token : %s\n", nextPageToken);
+            LOG.debug("next Page Token : "+ nextPageToken);
             wholeSet.addAll(fileToUpload);
         }
         return wholeSet;

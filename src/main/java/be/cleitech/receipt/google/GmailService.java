@@ -9,6 +9,8 @@ import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.Base64;
 import com.google.api.services.gmail.Gmail;
 import com.google.api.services.gmail.model.Message;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.velocity.app.VelocityEngine;
 import org.springframework.ui.velocity.VelocityEngineUtils;
 
@@ -27,12 +29,9 @@ import java.util.*;
 
 public class GmailService implements MailManager {
 
-
-    private static final JsonFactory JSON_FACTORY =
-            JacksonFactory.getDefaultInstance();
+    private static Log LOG = LogFactory.getLog(GmailService.class);
     private final Gmail gmail;
     private final MailProperties mailProperties;
-    private JsonFactory jsonFactory;
     private VelocityEngine velocityEngine;
 
 
@@ -112,16 +111,21 @@ public class GmailService implements MailManager {
 
     @Override
     public void sentPublishOcrProcess(Collection<String> fileList) throws MessagingException {
-        Map<String, Object> model = new HashMap<>();
-        model.put("fileList", fileList);
+        String text = "Publish Ocr - No File To upload";
+        if (fileList != null) {
+            Map<String, Object> model = new HashMap<>();
+            model.put("fileList", fileList);
 
-        String text = VelocityEngineUtils.mergeTemplateIntoString(
-                velocityEngine, "publishOcr.mailTemplate.vm", "UTF-8", model);
+            text = VelocityEngineUtils.mergeTemplateIntoString(
+                    velocityEngine, "publishOcr.mailTemplate.vm", "UTF-8", model);
+
+        }
         MailProperties.MailInfo publishOcr = mailProperties.getPublishOcr();
         sentMail(text, publishOcr);
     }
 
     private void sentMail(String text, MailProperties.MailInfo publishOcr) throws MessagingException {
+        LOG.debug("send Message with body "+text+" and info "+publishOcr);
         try {
             MimeMessage email = createEmail(
                     publishOcr.to,
@@ -130,8 +134,8 @@ public class GmailService implements MailManager {
                     publishOcr.subject, text);
             Message message = createMessageWithEmail(email);
             Message sentMessage = gmail.users().messages().send("me", message).execute();
-            System.out.println("Message id: " + sentMessage.getId());
-            System.out.println(sentMessage.toPrettyString());
+            LOG.debug("Message id: " + sentMessage.getId());
+            LOG.debug("Message pretty String : "+sentMessage.toPrettyString());
         } catch (IOException e) {
             throw new MessagingException("mail error", e);
         }

@@ -8,6 +8,8 @@ import com.dropbox.core.json.JsonReader;
 import com.machinepublishers.jbrowserdriver.JBrowserDriver;
 import com.machinepublishers.jbrowserdriver.Settings;
 import com.machinepublishers.jbrowserdriver.Timezone;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.*;
@@ -31,6 +33,8 @@ import java.util.Map;
  * @author Pierrick Puimean-Chieze on 27-12-16.
  */
 public class ShoeboxedService implements AuthenticatedService{
+    private static Log LOG = LogFactory.getLog(ShoeboxedService.class);
+    private final String password;
     private String redirectUrl;
     private static final String RESPONSE_TYPE = "token";
     private static final String SCOPE = "all";
@@ -41,11 +45,15 @@ public class ShoeboxedService implements AuthenticatedService{
 
     private File accessTokenFile;
 
-    public ShoeboxedService(String redirectUrl, String clientId, ProcessingState processingStateForUpload, File accessTokenFile) {
+    private String username;
+
+    public ShoeboxedService(String redirectUrl, String clientId, ProcessingState processingStateForUpload, File accessTokenFile, String username, String password) {
         this.redirectUrl = redirectUrl;
         this.clientId = clientId;
         this.processingState = processingStateForUpload;
         this.accessTokenFile = accessTokenFile;
+        this.password = password;
+        this.username = username;
         HttpMessageConverter formHttpMessageConverter = new FormHttpMessageConverter();
         restTemplate.getMessageConverters().add(formHttpMessageConverter);
         restTemplate.getMessageConverters().add(new GsonHttpMessageConverter());
@@ -94,19 +102,20 @@ public class ShoeboxedService implements AuthenticatedService{
 
         // This will block for the page load and any
         // associated AJAX requests
+        LOG.debug("Opening url "+url);
         driver.get(url);
 
-        driver.findElementById("username").sendKeys("pierrick.puimean-chieze@cleitech-solutions.be");
-        driver.findElementById("password").sendKeys("QzuD0iAPt3yiQCceJItn");
+        driver.findElementById("username").sendKeys(username);
+        driver.findElementById("password").sendKeys(password);
         driver.findElementById("loginForm").submit();
 
-        System.out.println("Shoeboxed Authentication done");
+        LOG.debug("Shoeboxed Authentication done");
         final String previousUrl = driver.getCurrentUrl();
-        System.out.println("previousUrl ; " + previousUrl);
+        LOG.debug("url after Authentication : " + previousUrl);
         driver.findElementByName("Allow").click();
-        System.out.println("Shoeboxed Allowing clicked");
+        LOG.debug("Shoeboxed Allowing clicked");
         String currentURL = driver.getCurrentUrl();
-        System.out.println("Shoeboxed URL just after click : " + currentURL);
+        LOG.debug("Shoeboxed URL after Allowing : " + currentURL);
         while (currentURL.equals(previousUrl)) {
             int currentStatus = driver.getStatusCode();
             if (currentStatus != 200) {
@@ -152,8 +161,8 @@ public class ShoeboxedService implements AuthenticatedService{
 //        final UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromUriString("http://localhost:9999/test");
         String url = uriComponentsBuilder.buildAndExpand(retrieveAccountId()).toUriString();
 
-        //TODO LOG this shit
-        System.out.println("upload " + tempFileName + " to shoeboxed");
+
+
 
         HttpHeaders headers = new HttpHeaders();
 
@@ -169,9 +178,8 @@ public class ShoeboxedService implements AuthenticatedService{
                 "\", \"type\":\"receipt\"}");
         HttpEntity entity = new HttpEntity<>(body, headers);
         final ResponseEntity<String> stringResponseEntity = restTemplate.postForEntity(url, entity, String.class);
-        final HttpStatus statusCode = stringResponseEntity.getStatusCode();
-        System.out.println(stringResponseEntity.getBody());
-        return statusCode;
+
+        return stringResponseEntity.getStatusCode();
     }
 
     /**

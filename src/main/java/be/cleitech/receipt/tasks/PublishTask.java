@@ -6,6 +6,8 @@ import be.cleitech.receipt.shoeboxed.MultipleMainCategoriesException;
 import be.cleitech.receipt.shoeboxed.ShoeboxedService;
 import be.cleitech.receipt.shoeboxed.domain.Document;
 import com.dropbox.core.DbxException;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -22,6 +24,8 @@ import java.util.TreeSet;
 @Component
 public class PublishTask {
 
+
+    private static Log LOG = LogFactory.getLog(PublishTask.class);
 
     private DropboxService dropboxService;
 
@@ -98,8 +102,7 @@ public class PublishTask {
             } catch (MultipleMainCategoriesException e) {
                 throw new MultipleMainCategoriesException("document " + document + " has Multiple Main Categories. See root cause for detail", e);
             } catch (IOException e) {
-                System.err.println("Error when trying to recover document " + document);
-                throw e;
+                throw new IOException("Error when trying to recover document " + document, e);
             }
 
 
@@ -111,7 +114,7 @@ public class PublishTask {
         //TODO eventually, try to pipe the stream directly to Dropbox, no local copy.
         try (final InputStream in = document.getAttachment().getUrl().openStream();
              final FileOutputStream out = new FileOutputStream(destinationFile)) {
-            System.out.println("retrieving file " + destinationFile);
+            LOG.info("retrieving file " + destinationFile);
             FileCopyUtils.copy(in, out);
         }
     }

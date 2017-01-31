@@ -1,5 +1,7 @@
 /.idea
 /build
-/application.properties
+application.properties
 .gradle/
 /*client_secret.json
+dropboxAccessToken
+test.txt

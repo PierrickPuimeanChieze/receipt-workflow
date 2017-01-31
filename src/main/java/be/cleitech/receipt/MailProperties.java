@@ -44,6 +44,16 @@ public class MailProperties {
         public void setFrom(String from) {
             this.from = from;
         }
+
+        @Override
+        public String toString() {
+            return "MailInfo{" +
+                    "to='" + to + '\'' +
+                    ", cc='" + cc + '\'' +
+                    ", subject='" + subject + '\'' +
+                    ", from='" + from + '\'' +
+                    '}';
+        }
     }
 
     private MailInfo uploadResult = new MailInfo();

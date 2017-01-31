@@ -39,7 +39,11 @@ public class Application {
     private ProcessingState shoeboxedProcessingStateForUpload;
     @Value("${processToOcr.uploadedDirName:uploaded}")
     private String shoeboxedUploadedDirName;
+    @Value("${shoeboxed.username")
+    private String username;
 
+    @Value("${shoeboxed.password")
+    private String password;
     @Autowired
     public Application(GoogleConfiguration googleConfiguration) {
         this.googleConfiguration = googleConfiguration;
@@ -61,7 +65,7 @@ public class Application {
 
     @Bean
     public ShoeboxedService shoeboxedService() throws IOException, JsonReader.FileLoadException {
-        ShoeboxedService shoeboxedService = new ShoeboxedService(redirectUrl, clientId, shoeboxedProcessingStateForUpload, shoeboxedAccesTokenTile);
+        ShoeboxedService shoeboxedService = new ShoeboxedService(redirectUrl, clientId, shoeboxedProcessingStateForUpload, shoeboxedAccesTokenTile, username, password);
         shoeboxedService.initAccessToken();
         return shoeboxedService;
     }

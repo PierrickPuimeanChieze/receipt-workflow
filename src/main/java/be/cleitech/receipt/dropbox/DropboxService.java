@@ -5,6 +5,8 @@ import be.cleitech.receipt.tasks.PublishTask;
 import com.dropbox.core.*;
 import com.dropbox.core.json.JsonReader;
 import com.dropbox.core.v2.DbxClientV2;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +17,8 @@ import java.io.*;
  */
 @Component
 public class DropboxService {
+    private static Log LOG = LogFactory.getLog(DropboxService.class);
+
     private final static String[] DROPBOX_SECRET_PATHS = new String[]{
             "./dropbox_client_secret.json",
             "/etc/shoeboxed-toolsuite/dropbox_client_secret.json",
@@ -78,14 +82,14 @@ public class DropboxService {
 
         String authorizeUrl = webAuth.authorize(webAuthRequest);
         System.out.println("Go to " + authorizeUrl);
-
+        System.out.print("Copy past the code :");
         String code = new BufferedReader(new InputStreamReader(System.in)).readLine();
         if (code == null) {
             //FIXME : put an exception
             throw new RuntimeException("code==null");
         }
-        //TODO log this shit
-        System.out.println("Authorization Code :" + code);
+
+        LOG.info("Authorization Code :" + code);
         code = code.trim();
         try {
             authFinish = webAuth.finishFromCode(code);
@@ -93,10 +97,7 @@ public class DropboxService {
             throw new RuntimeException("Error in DbxWebAuth.authorize: " + ex.getMessage());
         }
 
-
-        System.out.println("Authorization complete.");
-        System.out.println("- User ID: " + authFinish.getUserId());
-        System.out.println("- Access Token: " + authFinish.getAccessToken());
+        LOG.info("Authorization complete."+"\n- User ID: " + authFinish.getUserId()+"\n- Access Token: " + authFinish.getAccessToken());
         return authFinish.getAccessToken();
     }
 }
