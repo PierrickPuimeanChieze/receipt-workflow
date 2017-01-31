@@ -3,7 +3,7 @@ package be.cleitech.receipt;
 import be.cleitech.receipt.google.GoogleConfiguration;
 import be.cleitech.receipt.shoeboxed.ShoeboxedService;
 import be.cleitech.receipt.shoeboxed.domain.ProcessingState;
-import be.cleitech.receipt.tasks.PublishTask;
+import com.dropbox.core.json.JsonReader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
@@ -13,8 +13,8 @@ import org.springframework.boot.autoconfigure.web.WebMvcAutoConfiguration;
 import org.springframework.context.annotation.*;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 
+import java.io.File;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
 
 /**
  * Created by ppc on 1/25/2017.
@@ -32,6 +32,8 @@ public class Application {
     @Value("${clientId}")
     String clientId;
 
+    @Value("${credentials.directory}/shoeboxedAccessToken")
+    File shoeboxedAccesTokenTile;
 
     @Value("${shoeboxed.uploadProcessingState:NEEDS_SYSTEM_PROCESSING}")
     private ProcessingState shoeboxedProcessingStateForUpload;
@@ -58,9 +60,9 @@ public class Application {
     }
 
     @Bean
-    public ShoeboxedService shoeboxedService() {
-        ShoeboxedService shoeboxedService = new ShoeboxedService(redirectUrl, clientId, shoeboxedProcessingStateForUpload);
-        shoeboxedService.authorize();
+    public ShoeboxedService shoeboxedService() throws IOException, JsonReader.FileLoadException {
+        ShoeboxedService shoeboxedService = new ShoeboxedService(redirectUrl, clientId, shoeboxedProcessingStateForUpload, shoeboxedAccesTokenTile);
+        shoeboxedService.initAccessToken();
         return shoeboxedService;
     }
 

@@ -27,6 +27,7 @@ dependencies {
     compile('org.springframework.boot:spring-boot-starter')
     compile 'org.springframework.boot:spring-boot-starter-web'//used for the RestTemplate and UriComponentBuilder classes
     compile 'org.springframework.boot:spring-boot-starter-mail'//used for the RestTemplate and UriComponentBuilder classes
+    compile 'org.springframework.boot:spring-boot-starter-velocity'//used for the RestTemplate and UriComponentBuilder classes
     compile 'org.springframework:spring-context-support'//used for the RestTemplate and UriComponentBuilder classes
 
     compile 'com.google.api-client:google-api-client:1.22.0'

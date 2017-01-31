@@ -21,29 +21,31 @@ public class DropboxService {
             System.getenv("APPDATA") + "/shoeboxed-toolsuite/dropbox_client_secret.json",
             "~/.shoeboxed-toolsuite/dropbox_client_secret.json"
     };
-    private final String DROPBOX_UPLOAD_PATH = "/cfp consulting/TEST";
-    private String dropboxAccessToken;
+    @Value("${dropbox.uploadPath}")
+    private String uploadPath;
+
+    private String accessToken;
 
     private DbxAuthFinish authFinish;
 
     private DbxAppInfo appInfo;
 
     @Value("${credentials.directory}/dropboxAcessToken")
-    File dropboxAccessTokenFile;
+    private File accessTokenFile;
 
     public void initDropboxAccessToken() throws JsonReader.FileLoadException, IOException {
-        if (!dropboxAccessTokenFile.exists()) {
-            dropboxAccessToken = retrieveDropBoxAccessToken();
-            try (FileWriter fileWriter = new FileWriter(dropboxAccessTokenFile)) {
-                fileWriter.write(dropboxAccessToken);
+        if (!accessTokenFile.exists()) {
+            accessToken = retrieveDropBoxAccessToken();
+            try (FileWriter fileWriter = new FileWriter(accessTokenFile)) {
+                fileWriter.write(accessToken);
             }
 
         } else {
             try (
-                    FileReader fileReader = new FileReader(dropboxAccessTokenFile);
+                    FileReader fileReader = new FileReader(accessTokenFile);
                     BufferedReader bufferedReader = new BufferedReader(fileReader)
             ) {
-                dropboxAccessToken = bufferedReader.readLine();
+                accessToken = bufferedReader.readLine();
             }
         }
     }
@@ -51,11 +53,11 @@ public class DropboxService {
     public void uploadFile(File fileToUpload, String fileName, PublishTask publishTask) throws DbxException, IOException {
         // Create Dropbox client
         DbxRequestConfig config = new DbxRequestConfig("shoeboxed-toolsuite");
-        DbxClientV2 client = new DbxClientV2(config, dropboxAccessToken);
+        DbxClientV2 client = new DbxClientV2(config, accessToken);
 
         // Upload file to Dropbox
         try (InputStream in = new FileInputStream(fileToUpload)) {
-            client.files().uploadBuilder(DROPBOX_UPLOAD_PATH + "/" + fileName)
+            client.files().uploadBuilder(uploadPath + "/" + fileName)
                     .uploadAndFinish(in);
         }
     }

@@ -4,6 +4,7 @@ import be.cleitech.receipt.shoeboxed.domain.Document;
 import be.cleitech.receipt.shoeboxed.domain.Documents;
 import be.cleitech.receipt.shoeboxed.domain.ProcessingState;
 import be.cleitech.receipt.shoeboxed.domain.User;
+import com.dropbox.core.json.JsonReader;
 import com.machinepublishers.jbrowserdriver.JBrowserDriver;
 import com.machinepublishers.jbrowserdriver.Settings;
 import com.machinepublishers.jbrowserdriver.Timezone;
@@ -18,6 +19,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.*;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
@@ -37,19 +39,35 @@ public class ShoeboxedService implements AuthenticatedService{
     private RestTemplate restTemplate = new RestTemplate();
     private ProcessingState processingState;
 
-    public ShoeboxedService(String redirectUrl, String clientId, ProcessingState processingStateForUpload) {
+    private File accessTokenFile;
+
+    public ShoeboxedService(String redirectUrl, String clientId, ProcessingState processingStateForUpload, File accessTokenFile) {
         this.redirectUrl = redirectUrl;
         this.clientId = clientId;
         this.processingState = processingStateForUpload;
+        this.accessTokenFile = accessTokenFile;
         HttpMessageConverter formHttpMessageConverter = new FormHttpMessageConverter();
         restTemplate.getMessageConverters().add(formHttpMessageConverter);
         restTemplate.getMessageConverters().add(new GsonHttpMessageConverter());
 
     }
 
+    public void initAccessToken() throws JsonReader.FileLoadException, IOException {
+        accessToken = retrieveAccessToken();
+        /*if (!accessTokenFile.exists()) {
+            accessToken = retrieveAccessToken();
+            try (FileWriter fileWriter = new FileWriter(accessTokenFile)) {
+                fileWriter.write(accessToken);
+            }
 
-    public void authorize() {
-        this.accessToken = retrieveAccessToken();
+        } else {
+            try (
+                    FileReader fileReader = new FileReader(accessTokenFile);
+                    BufferedReader bufferedReader = new BufferedReader(fileReader)
+            ) {
+                accessToken = bufferedReader.readLine();
+            }
+        }*/
     }
 
     /**

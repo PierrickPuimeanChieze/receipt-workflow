@@ -106,8 +106,8 @@ public class GmailService implements MailManager {
         Map<String, Object> model = new HashMap<>();
         model.put("fileList", fileList);
         String text = VelocityEngineUtils.mergeTemplateIntoString(
-                velocityEngine, "velocity/uploadResult.mailTemplate.vm", "UTF-8", model);
-        sentMail(text, mailProperties.uploadResult);
+                velocityEngine, "uploadResult.mailTemplate.vm", "UTF-8", model);
+        sentMail(text, mailProperties.getUploadResult());
     }
 
     @Override
@@ -116,15 +116,15 @@ public class GmailService implements MailManager {
         model.put("fileList", fileList);
 
         String text = VelocityEngineUtils.mergeTemplateIntoString(
-                velocityEngine, "velocity/publishOcr.mailTemplate.vm", "UTF-8", model);
-        MailProperties.MailInfo publishOcr = mailProperties.publishOcr;
+                velocityEngine, "publishOcr.mailTemplate.vm", "UTF-8", model);
+        MailProperties.MailInfo publishOcr = mailProperties.getPublishOcr();
         sentMail(text, publishOcr);
     }
 
     private void sentMail(String text, MailProperties.MailInfo publishOcr) throws MessagingException {
         try {
             MimeMessage email = createEmail(
-                    publishOcr.dest,
+                    publishOcr.to,
                     publishOcr.from,
                     publishOcr.cc,
                     publishOcr.subject, text);
@@ -143,7 +143,7 @@ public class GmailService implements MailManager {
         model.put("operationArgs", args);
         model.put("errorContent", errorContent);
         String text = VelocityEngineUtils.mergeTemplateIntoString(
-                velocityEngine, "velocity/errorMessage.mailTemplate.vm", "UTF-8", model);
-        sentMail(text, mailProperties.errorMessage);
+                velocityEngine, "errorMessage.mailTemplate.vm", "UTF-8", model);
+        sentMail(text, mailProperties.getErrorMessage());
     }
 }
