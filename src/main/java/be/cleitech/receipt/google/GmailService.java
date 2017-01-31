@@ -1,6 +1,7 @@
 package be.cleitech.receipt.google;
 
 import be.cleitech.receipt.MailManager;
+import be.cleitech.receipt.MailProperties;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
@@ -30,31 +31,23 @@ public class GmailService implements MailManager {
     private static final JsonFactory JSON_FACTORY =
             JacksonFactory.getDefaultInstance();
     private final Gmail gmail;
+    private final MailProperties mailProperties;
     private JsonFactory jsonFactory;
     private VelocityEngine velocityEngine;
-    private final String uploadResultDest;
-    private final String uploadResultCc;
-    private final String uploadResultSubject;
-    private String uploadResultFrom;
+
 
     public GmailService(
 
             HttpTransport httpTransport,
             Credential credential,
-            JsonFactory jsonFactory, VelocityEngine velocityEngine,String applicationName,
-            String uploadResultDest,
-            String uploadResultCc,
-            String uploadResultFrom,
-            String uploadResultSubject) throws GeneralSecurityException, IOException {
+            JsonFactory jsonFactory, VelocityEngine velocityEngine, String applicationName,
+            MailProperties mailProperties) throws GeneralSecurityException, IOException {
         this.velocityEngine = velocityEngine;
-        this.uploadResultDest = uploadResultDest;
-        this.uploadResultCc = uploadResultCc;
-        this.uploadResultFrom = uploadResultFrom;
-        this.uploadResultSubject = uploadResultSubject;
 
         gmail = new Gmail.Builder(httpTransport, jsonFactory, credential)
                 .setApplicationName(applicationName)
                 .build();
+        this.mailProperties = mailProperties;
     }
 
 
@@ -88,10 +81,10 @@ public class GmailService implements MailManager {
      * @throws MessagingException
      */
     private static MimeMessage createEmail(String to,
-                                          String from,
-                                          String cc,
-                                          String subject,
-                                          String bodyText)
+                                           String from,
+                                           String cc,
+                                           String subject,
+                                           String bodyText)
             throws MessagingException {
         Properties props = new Properties();
         Session session = Session.getDefaultInstance(props, null);
@@ -114,12 +107,27 @@ public class GmailService implements MailManager {
         model.put("fileList", fileList);
         String text = VelocityEngineUtils.mergeTemplateIntoString(
                 velocityEngine, "velocity/uploadResult.mailTemplate.vm", "UTF-8", model);
+        sentMail(text, mailProperties.uploadResult);
+    }
+
+    @Override
+    public void sentPublishOcrProcess(Collection<String> fileList) throws MessagingException {
+        Map<String, Object> model = new HashMap<>();
+        model.put("fileList", fileList);
+
+        String text = VelocityEngineUtils.mergeTemplateIntoString(
+                velocityEngine, "velocity/publishOcr.mailTemplate.vm", "UTF-8", model);
+        MailProperties.MailInfo publishOcr = mailProperties.publishOcr;
+        sentMail(text, publishOcr);
+    }
+
+    private void sentMail(String text, MailProperties.MailInfo publishOcr) throws MessagingException {
         try {
             MimeMessage email = createEmail(
-                    uploadResultDest,
-                    uploadResultFrom,
-                    uploadResultCc,
-                    uploadResultSubject, text);
+                    publishOcr.dest,
+                    publishOcr.from,
+                    publishOcr.cc,
+                    publishOcr.subject, text);
             Message message = createMessageWithEmail(email);
             Message sentMessage = gmail.users().messages().send("me", message).execute();
             System.out.println("Message id: " + sentMessage.getId());
@@ -130,11 +138,12 @@ public class GmailService implements MailManager {
     }
 
     @Override
-    public void sendErrorMessage(String[] args, String errorContent) {
+    public void sendErrorMessage(String[] args, String errorContent) throws MessagingException {
         Map<String, Object> model = new HashMap<>();
         model.put("operationArgs", args);
         model.put("errorContent", errorContent);
         String text = VelocityEngineUtils.mergeTemplateIntoString(
                 velocityEngine, "velocity/errorMessage.mailTemplate.vm", "UTF-8", model);
+        sentMail(text, mailProperties.errorMessage);
     }
 }

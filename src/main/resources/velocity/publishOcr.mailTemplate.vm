@@ -1,0 +1,6 @@
+
+Les fichiers suivants ont été publiés vers l'outil d'OCR
+
+#foreach ($file in $fileList)
+* $file
+#end

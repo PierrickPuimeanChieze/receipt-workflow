@@ -1,5 +1,6 @@
 package be.cleitech.receipt.google;
 
+import be.cleitech.receipt.MailProperties;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
@@ -16,6 +17,7 @@ import com.google.api.services.gmail.GmailScopes;
 import org.apache.velocity.app.VelocityEngine;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -31,27 +33,29 @@ import java.util.List;
  * Created by ppc on 1/26/2017.
  */
 @Configuration
+@EnableConfigurationProperties(MailProperties.class)
 public class GoogleConfiguration {
 
     @Value("${credentials.directory}")
     File credentialDirectory;
-    @Value("${mail.uploadResult.to}")
-    String uploadResultDest;
-    @Value("${mail.uploadResult.cc}")
-    String uploadResultCc;
-    @Value("${mail.uploadResult.subject}")
-    private String uploadResultSubject;
-    @Value("${mail.uploadResult.from}")
-    private String uploadResultFrom;
-    private String applicationName = "receipt-toolsuite";
+
+    final MailProperties mailProperties;
+
+    @Value("${spring.application.name")
+    private String applicationName;
+
+    final VelocityEngine velocityEngine;
 
     @Autowired
-    VelocityEngine velocityEngine;
+    public GoogleConfiguration(MailProperties mailProperties, VelocityEngine velocityEngine) {
+        this.mailProperties = mailProperties;
+        this.velocityEngine = velocityEngine;
+    }
 
     @Bean
     public GmailService gmailService() throws GeneralSecurityException, IOException {
         return new GmailService(httpTransport(), googleCredentials(), jsonFactory(),
-                velocityEngine, applicationName, uploadResultDest, uploadResultCc, uploadResultFrom, uploadResultSubject);
+                velocityEngine, applicationName, mailProperties);
     }
 
     private HttpTransport httpTransport() throws GeneralSecurityException, IOException {

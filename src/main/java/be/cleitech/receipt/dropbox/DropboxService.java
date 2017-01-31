@@ -6,12 +6,14 @@ import com.dropbox.core.*;
 import com.dropbox.core.json.JsonReader;
 import com.dropbox.core.v2.DbxClientV2;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import java.io.*;
 
 /**
  * Created by ppc on 1/30/2017.
  */
+@Component
 public class DropboxService {
     private final static String[] DROPBOX_SECRET_PATHS = new String[]{
             "./dropbox_client_secret.json",
@@ -29,7 +31,7 @@ public class DropboxService {
     @Value("${credentials.directory}/dropboxAcessToken")
     File dropboxAccessTokenFile;
 
-    public void initDropboxSDK() throws JsonReader.FileLoadException, IOException {
+    public void initDropboxAccessToken() throws JsonReader.FileLoadException, IOException {
         if (!dropboxAccessTokenFile.exists()) {
             dropboxAccessToken = retrieveDropBoxAccessToken();
             try (FileWriter fileWriter = new FileWriter(dropboxAccessTokenFile)) {

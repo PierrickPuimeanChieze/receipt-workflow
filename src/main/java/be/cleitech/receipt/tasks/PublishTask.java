@@ -5,10 +5,10 @@ import be.cleitech.receipt.dropbox.DropboxService;
 import be.cleitech.receipt.shoeboxed.MultipleMainCategoriesException;
 import be.cleitech.receipt.shoeboxed.ShoeboxedService;
 import be.cleitech.receipt.shoeboxed.domain.Document;
-import com.dropbox.core.DbxAppInfo;
-import com.dropbox.core.DbxAuthFinish;
 import com.dropbox.core.DbxException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 import org.springframework.util.FileCopyUtils;
 
 import javax.mail.MessagingException;
@@ -16,10 +16,10 @@ import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Date;
-import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 
+@Component
 public class PublishTask {
 
 
@@ -46,7 +46,9 @@ public class PublishTask {
 
     private MailManager mailManager;
 
-    public PublishTask(ShoeboxedService shoeboxedService, MailManager mailManager) {
+    @Autowired
+    public PublishTask(DropboxService dropboxService, ShoeboxedService shoeboxedService, MailManager mailManager) {
+        this.dropboxService = dropboxService;
         this.shoeboxedService = shoeboxedService;
         this.mailManager = mailManager;
     }
@@ -232,7 +234,7 @@ public class PublishTask {
 
     public void run(String[] args) throws Exception {
 
-        dropboxService.initDropboxSDK();
+        dropboxService.initDropboxAccessToken();
         retrieveAllFile();
     }
 

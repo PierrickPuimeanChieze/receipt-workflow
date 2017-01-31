@@ -9,5 +9,6 @@ import java.util.Collection;
 public interface MailManager {
     void sentExtractionResults(Collection<String> fileList) throws MessagingException;
 
-    void sendErrorMessage(String[] operationArgs, String errorContent);
+    void sentPublishOcrProcess(Collection<String> fileList) throws MessagingException;
+    void sendErrorMessage(String[] operationArgs, String errorContent) throws MessagingException;
 }
