@@ -24,6 +24,7 @@ targetCompatibility = 1.8
 
 
 dependencies {
+    testCompile('org.springframework.boot:spring-boot-starter-test')
     compile('org.springframework.boot:spring-boot-starter')
     compile 'org.springframework.boot:spring-boot-starter-web'//used for the RestTemplate and UriComponentBuilder classes
     compile 'org.springframework.boot:spring-boot-starter-mail'//used for the RestTemplate and UriComponentBuilder classes
@@ -39,6 +40,7 @@ dependencies {
     compile 'com.google.code.gson:gson:2.6.2'
     compile 'com.dropbox.core:dropbox-core-sdk:2.1.2'
     compile 'org.apache.velocity:velocity'
-
+    compile 'org.springframework.boot:spring-boot-starter-security'
+    compile 'org.springframework.security.oauth:spring-security-oauth2'
 }
 

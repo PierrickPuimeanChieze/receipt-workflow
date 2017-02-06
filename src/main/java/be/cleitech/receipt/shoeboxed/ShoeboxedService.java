@@ -1,13 +1,9 @@
 package be.cleitech.receipt.shoeboxed;
 
-import be.cleitech.receipt.shoeboxed.domain.Document;
-import be.cleitech.receipt.shoeboxed.domain.Documents;
-import be.cleitech.receipt.shoeboxed.domain.ProcessingState;
-import be.cleitech.receipt.shoeboxed.domain.User;
+import be.cleitech.receipt.shoeboxed.domain.*;
 import com.dropbox.core.json.JsonReader;
-import com.machinepublishers.jbrowserdriver.JBrowserDriver;
-import com.machinepublishers.jbrowserdriver.Settings;
-import com.machinepublishers.jbrowserdriver.Timezone;
+import com.google.gson.Gson;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.core.io.FileSystemResource;
@@ -18,42 +14,54 @@ import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.GsonHttpMessageConverter;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.*;
 import java.net.URI;
 import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * @author Pierrick Puimean-Chieze on 27-12-16.
  */
-public class ShoeboxedService implements AuthenticatedService{
+public class ShoeboxedService implements AuthenticatedService {
     private static Log LOG = LogFactory.getLog(ShoeboxedService.class);
     private final String password;
+    private final static String TOKEN_URL = "https://id.shoeboxed.com/oauth/token";
     private String redirectUrl;
-    private static final String RESPONSE_TYPE = "token";
+    private static final String RESPONSE_TYPE = "code";
     private static final String SCOPE = "all";
     private String clientId;
-    private String accessToken;
+    private String clientSecret;
+
+    public ShoeboxedTokenInfo getAccessTokenInfo() {
+        return accessTokenInfo;
+    }
+
+    private ShoeboxedTokenInfo accessTokenInfo;
     private RestTemplate restTemplate = new RestTemplate();
     private ProcessingState processingState;
 
     private File accessTokenFile;
 
+    private Gson gson = new Gson();
     private String username;
 
-    public ShoeboxedService(String redirectUrl, String clientId, ProcessingState processingStateForUpload, File accessTokenFile, String username, String password) {
+    public ShoeboxedService(String redirectUrl, String clientId, String clientSecret, ProcessingState processingStateForUpload, File accessTokenFile, String username, String password) {
         this.redirectUrl = redirectUrl;
         this.clientId = clientId;
         this.processingState = processingStateForUpload;
         this.accessTokenFile = accessTokenFile;
         this.password = password;
         this.username = username;
+        this.clientSecret = clientSecret;
         HttpMessageConverter formHttpMessageConverter = new FormHttpMessageConverter();
         restTemplate.getMessageConverters().add(formHttpMessageConverter);
         restTemplate.getMessageConverters().add(new GsonHttpMessageConverter());
@@ -61,21 +69,22 @@ public class ShoeboxedService implements AuthenticatedService{
     }
 
     public void initAccessToken() throws JsonReader.FileLoadException, IOException {
-        accessToken = retrieveAccessToken();
-        /*if (!accessTokenFile.exists()) {
-            accessToken = retrieveAccessToken();
+
+        if (!accessTokenFile.exists()) {
+            accessTokenInfo = retrieveAccessToken();
             try (FileWriter fileWriter = new FileWriter(accessTokenFile)) {
-                fileWriter.write(accessToken);
+
+                gson.toJson(accessTokenInfo, fileWriter);
             }
 
         } else {
             try (
                     FileReader fileReader = new FileReader(accessTokenFile);
-                    BufferedReader bufferedReader = new BufferedReader(fileReader)
             ) {
-                accessToken = bufferedReader.readLine();
+                com.google.gson.stream.JsonReader jsonReader = gson.newJsonReader(fileReader);
+                accessTokenInfo = gson.fromJson(fileReader, ShoeboxedTokenInfo.class);
             }
-        }*/
+        }
     }
 
     /**
@@ -83,9 +92,8 @@ public class ShoeboxedService implements AuthenticatedService{
      *
      * @return the access token to retrieve
      */
-    private String retrieveAccessToken() {
-        final StringBuilder buffer = new StringBuilder();
-        final String url = UriComponentsBuilder.fromPath("https://id.shoeboxed.com/oauth/authorize")
+    private ShoeboxedTokenInfo retrieveAccessToken() throws IOException {
+        final String oauthUrl = UriComponentsBuilder.fromUriString("http://id.shoeboxed.com/oauth/authorize")
                 .queryParam("client_id", clientId)
                 .queryParam("response_type", RESPONSE_TYPE)
                 .queryParam("scope", SCOPE)
@@ -94,59 +102,45 @@ public class ShoeboxedService implements AuthenticatedService{
                 .build().toUriString();
 
 
-        // You can optionally pass a Settings object here,
-        // constructed using Settings.Builder
-        Settings.Builder timezone = Settings.builder().
-                timezone(Timezone.AMERICA_NEWYORK);
-        JBrowserDriver driver = new JBrowserDriver(timezone.build());
-
         // This will block for the page load and any
         // associated AJAX requests
-        LOG.debug("Opening url "+url);
-        driver.get(url);
-
-        driver.findElementById("username").sendKeys(username);
-        driver.findElementById("password").sendKeys(password);
-        driver.findElementById("loginForm").submit();
-
-        LOG.debug("Shoeboxed Authentication done");
-        final String previousUrl = driver.getCurrentUrl();
-        LOG.debug("url after Authentication : " + previousUrl);
-        driver.findElementByName("Allow").click();
-        LOG.debug("Shoeboxed Allowing clicked");
-        String currentURL = driver.getCurrentUrl();
-        LOG.debug("Shoeboxed URL after Allowing : " + currentURL);
-        while (currentURL.equals(previousUrl)) {
-            int currentStatus = driver.getStatusCode();
-            if (currentStatus != 200) {
-                throw new RuntimeException("Wrong status " + currentStatus);
-            }
-            currentURL = driver.getCurrentUrl();
-        }
-        // Returns the page source in its current state, including
-        // any DOM updates that occurred after page load
-        if (currentURL.startsWith(redirectUrl) && currentURL.contains("access_token") && buffer.length() == 0) {
-            try {
-                URL url1 = new URL(currentURL);
-                String[] params = url1.getRef().split("&");
-                Map<String, String> map = new HashMap<>();
-                for (String param : params) {
-                    String name = param.split("=")[0];
-                    String value = param.split("=")[1];
-                    map.put(name, value);
-                }
-                String access_token = map.get("access_token");
-                buffer.append(access_token);
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
-            }
+        System.out.println("go to URL " + oauthUrl);
+        System.out.println("\n");
+        String code = new BufferedReader(new InputStreamReader(System.in)).readLine();
+        if (code == null) {
+            throw new RuntimeException("code==null");
         }
 
-        // Close the browser. Allows this thread to terminate.
-        driver.quit();
+        final Instant lastRefresh = Instant.now();
 
-        return buffer.toString();
+        final String tokenUrl = UriComponentsBuilder.fromUriString(TOKEN_URL)
+                .queryParam("grant_type", "authorization_code")
+                .queryParam("code", code)
+                .queryParam("redirect_uri", redirectUrl)
+                .build().toUriString();
+
+
+        HttpHeaders headers = new HttpHeaders();
+
+
+        String auth = clientId + ":" + clientSecret;
+        String encodedAuth = Base64.encodeBase64String(
+                auth.getBytes(Charset.forName("US-ASCII")));
+        String authHeader = "Basic " + encodedAuth;
+        headers.set("Authorization", authHeader);
+
+
+        System.out.println("trying to acess :" + tokenUrl);
+        try {
+            ResponseEntity<ShoeboxedTokenInfo> exchange = restTemplate.exchange(tokenUrl, HttpMethod.POST, new HttpEntity(headers), ShoeboxedTokenInfo.class);
+
+            ShoeboxedTokenInfo shoeboxedTokenInfo = exchange.getBody();
+            shoeboxedTokenInfo.setLastRefresh(lastRefresh);
+            return shoeboxedTokenInfo;
+        } catch (HttpClientErrorException ex) {
+            System.out.println(ex.getResponseBodyAsString());
+            throw ex;
+        }
     }
 
     /**
@@ -162,13 +156,6 @@ public class ShoeboxedService implements AuthenticatedService{
         String url = uriComponentsBuilder.buildAndExpand(retrieveAccountId()).toUriString();
 
 
-
-
-        HttpHeaders headers = new HttpHeaders();
-
-        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-        headers.set("Authorization", "Bearer " + accessToken);
-
         final java.io.File file = tempFileName.toFile();
         Resource resourceToUpload = new FileSystemResource(file);
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
@@ -176,10 +163,45 @@ public class ShoeboxedService implements AuthenticatedService{
         body.add("document", "{ \"processingState\": \"" +
                 processingState +
                 "\", \"type\":\"receipt\"}");
-        HttpEntity entity = new HttpEntity<>(body, headers);
+        HttpEntity entity = new HttpEntity<>(body, buildHeadersFromAccessToken());
         final ResponseEntity<String> stringResponseEntity = restTemplate.postForEntity(url, entity, String.class);
 
         return stringResponseEntity.getStatusCode();
+    }
+
+    private HttpHeaders buildHeadersFromAccessToken() {
+        refreshTokenIfNeeded();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        headers.set("Authorization", "Bearer " + accessTokenInfo.getAccessToken());
+        return headers;
+    }
+
+    private void refreshTokenIfNeeded() {
+        Instant now = Instant.now();
+
+        Instant accessTokenLastRefresh = accessTokenInfo.getLastRefresh();
+
+        long secondsSinceLastRefresh = Duration.between(accessTokenLastRefresh, now).getSeconds();
+
+        float securityMargin = (float) 0.9;
+        if (secondsSinceLastRefresh > (accessTokenInfo.getExpiresIn() * securityMargin)) {
+            final String tokenUrl = UriComponentsBuilder.fromPath(TOKEN_URL)
+                    .queryParam("grant_type", "refresh_token")
+                    .queryParam("client_id", clientId)
+                    .queryParam("client_secret", redirectUrl)
+                    .queryParam("refresh_token", accessTokenInfo.getRefreshToken())
+                    .build().toUriString();
+
+            ResponseEntity<ShoeboxedTokenInfo> refreshResponse = restTemplate.postForEntity(tokenUrl, null, ShoeboxedTokenInfo.class);
+            if (refreshResponse.getStatusCode() == HttpStatus.OK) {
+                accessTokenInfo.setLastRefresh(now);
+                ShoeboxedTokenInfo partialTokenInfo = refreshResponse.getBody();
+                accessTokenInfo.setAccessToken(partialTokenInfo.getAccessToken());
+                accessTokenInfo.setExpiresIn(partialTokenInfo.getExpiresIn());
+            }
+
+        }
     }
 
     /**
@@ -188,13 +210,9 @@ public class ShoeboxedService implements AuthenticatedService{
      * @return the first account Id
      */
     private String retrieveAccountId() {
-        HttpHeaders headers = new HttpHeaders();
-
-        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-        headers.set("Authorization", "Bearer " + accessToken);
 
         UriComponentsBuilder usersAccountUri = UriComponentsBuilder.fromUriString("https://api.shoeboxed.com:443/v2/user/");
-        HttpEntity entity = new HttpEntity(headers);
+        HttpEntity entity = new HttpEntity(buildHeadersFromAccessToken());
 
         final ResponseEntity<User> exchange =
                 restTemplate.exchange(usersAccountUri.build().toUri(),
@@ -219,11 +237,8 @@ public class ShoeboxedService implements AuthenticatedService{
                 .queryParam("category", categoryFilter)
                 .queryParam("trashed", false);
 
-        HttpHeaders headers = new HttpHeaders();
+        HttpEntity entity = new HttpEntity(buildHeadersFromAccessToken());
 
-        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-        headers.set("Authorization", "Bearer " + accessToken);
-        HttpEntity entity = new HttpEntity(headers);
 
         //We retrieve the documents metadata
         final URI url = getDocumentsAccountUri.buildAndExpand(retrieveAccountId()).toUri();

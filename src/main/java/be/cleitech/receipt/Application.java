@@ -1,6 +1,7 @@
 package be.cleitech.receipt;
 
 import be.cleitech.receipt.google.GoogleConfiguration;
+import be.cleitech.receipt.shoeboxed.ShoeboxedRestResource;
 import be.cleitech.receipt.shoeboxed.ShoeboxedService;
 import be.cleitech.receipt.shoeboxed.domain.ProcessingState;
 import com.dropbox.core.json.JsonReader;
@@ -19,7 +20,8 @@ import java.io.IOException;
 /**
  * Created by ppc on 1/25/2017.
  */
-@Import(GoogleConfiguration.class)
+@Import({GoogleConfiguration.class, ShoeboxedRestResource.class})
+
 @SpringBootApplication
         (exclude = {EmbeddedServletContainerAutoConfiguration.class,
                 WebMvcAutoConfiguration.class})
@@ -27,10 +29,12 @@ public class Application {
 
     final GoogleConfiguration googleConfiguration;
     //TODO add shoeboxed prefix
-    @Value("${redirectUrl}")
+    @Value("${shoeboxed.redirectUrl}")
     String redirectUrl;
-    @Value("${clientId}")
+    @Value("${shoeboxed.clientId}")
     String clientId;
+    @Value("${shoeboxed.clientSecret}")
+    String clientSecret;
 
     @Value("${credentials.directory}/shoeboxedAccessToken")
     File shoeboxedAccesTokenTile;
@@ -39,18 +43,19 @@ public class Application {
     private ProcessingState shoeboxedProcessingStateForUpload;
     @Value("${processToOcr.uploadedDirName:uploaded}")
     private String shoeboxedUploadedDirName;
-    @Value("${shoeboxed.username")
+    @Value("${shoeboxed.username}")
     private String username;
 
-    @Value("${shoeboxed.password")
+    @Value("${shoeboxed.password}")
     private String password;
+
     @Autowired
     public Application(GoogleConfiguration googleConfiguration) {
         this.googleConfiguration = googleConfiguration;
     }
 
 
-    public static void main(String[] args){
+    public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
     }
 
@@ -65,7 +70,8 @@ public class Application {
 
     @Bean
     public ShoeboxedService shoeboxedService() throws IOException, JsonReader.FileLoadException {
-        ShoeboxedService shoeboxedService = new ShoeboxedService(redirectUrl, clientId, shoeboxedProcessingStateForUpload, shoeboxedAccesTokenTile, username, password);
+        ShoeboxedService shoeboxedService = new ShoeboxedService(redirectUrl, clientId, clientSecret,shoeboxedProcessingStateForUpload, shoeboxedAccesTokenTile, username, password);
+
         shoeboxedService.initAccessToken();
         return shoeboxedService;
     }
