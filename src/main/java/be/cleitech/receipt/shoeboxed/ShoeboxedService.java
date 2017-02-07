@@ -1,5 +1,6 @@
 package be.cleitech.receipt.shoeboxed;
 
+import be.cleitech.receipt.LoggingRequestInterceptor;
 import be.cleitech.receipt.shoeboxed.domain.*;
 import com.dropbox.core.json.JsonReader;
 import com.google.gson.Gson;
@@ -9,6 +10,7 @@ import org.apache.commons.logging.LogFactory;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.*;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.converter.FormHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.GsonHttpMessageConverter;
@@ -26,7 +28,9 @@ import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 /**
  * @author Pierrick Puimean-Chieze on 27-12-16.
@@ -65,6 +69,9 @@ public class ShoeboxedService implements AuthenticatedService {
         HttpMessageConverter formHttpMessageConverter = new FormHttpMessageConverter();
         restTemplate.getMessageConverters().add(formHttpMessageConverter);
         restTemplate.getMessageConverters().add(new GsonHttpMessageConverter());
+        List<ClientHttpRequestInterceptor> interceptors = new ArrayList<>();
+        interceptors.add(new LoggingRequestInterceptor());
+        restTemplate.setInterceptors(interceptors);
 
     }
 
@@ -120,14 +127,7 @@ public class ShoeboxedService implements AuthenticatedService {
                 .build().toUriString();
 
 
-        HttpHeaders headers = new HttpHeaders();
-
-
-        String auth = clientId + ":" + clientSecret;
-        String encodedAuth = Base64.encodeBase64String(
-                auth.getBytes(Charset.forName("US-ASCII")));
-        String authHeader = "Basic " + encodedAuth;
-        headers.set("Authorization", authHeader);
+        HttpHeaders headers = buildHeadersFromClientInfo();
 
 
         System.out.println("trying to acess :" + tokenUrl);
@@ -141,6 +141,18 @@ public class ShoeboxedService implements AuthenticatedService {
             System.out.println(ex.getResponseBodyAsString());
             throw ex;
         }
+    }
+
+    private HttpHeaders buildHeadersFromClientInfo() {
+        HttpHeaders headers = new HttpHeaders();
+
+
+        String auth = clientId + ":" + clientSecret;
+        String encodedAuth = Base64.encodeBase64String(
+                auth.getBytes(Charset.forName("US-ASCII")));
+        String authHeader = "Basic " + encodedAuth;
+        headers.set("Authorization", authHeader);
+        return headers;
     }
 
     /**
@@ -186,14 +198,14 @@ public class ShoeboxedService implements AuthenticatedService {
 
         float securityMargin = (float) 0.9;
         if (secondsSinceLastRefresh > (accessTokenInfo.getExpiresIn() * securityMargin)) {
-            final String tokenUrl = UriComponentsBuilder.fromPath(TOKEN_URL)
+            final String tokenUrl = UriComponentsBuilder.fromUriString(TOKEN_URL)
                     .queryParam("grant_type", "refresh_token")
                     .queryParam("client_id", clientId)
                     .queryParam("client_secret", redirectUrl)
                     .queryParam("refresh_token", accessTokenInfo.getRefreshToken())
                     .build().toUriString();
 
-            ResponseEntity<ShoeboxedTokenInfo> refreshResponse = restTemplate.postForEntity(tokenUrl, null, ShoeboxedTokenInfo.class);
+            ResponseEntity<ShoeboxedTokenInfo> refreshResponse = restTemplate.exchange(tokenUrl, HttpMethod.POST, new HttpEntity<>(buildHeadersFromClientInfo()), ShoeboxedTokenInfo.class);
             if (refreshResponse.getStatusCode() == HttpStatus.OK) {
                 accessTokenInfo.setLastRefresh(now);
                 ShoeboxedTokenInfo partialTokenInfo = refreshResponse.getBody();
@@ -239,12 +251,24 @@ public class ShoeboxedService implements AuthenticatedService {
 
         HttpEntity entity = new HttpEntity(buildHeadersFromAccessToken());
 
-
+        //TODO extract the use of retrieveAccountId
         //We retrieve the documents metadata
         final URI url = getDocumentsAccountUri.buildAndExpand(retrieveAccountId()).toUri();
         final ResponseEntity<Documents> documentsResponse = restTemplate.exchange(url, HttpMethod.GET, entity, Documents.class);
 
         return documentsResponse.getBody().getDocuments();
+
+    }
+
+    public void updateMetadata(String documentId, List<String> categories) {
+
+        UriComponentsBuilder getDocumentsAccountUri = UriComponentsBuilder.fromUriString("https://api.shoeboxed.com:443/v2/accounts/{accountId}/documents/{documentId}");
+        Document newMetadata = new Document();
+        newMetadata.setCategories(categories);
+
+        HttpEntity<Document> entity = new HttpEntity<>(newMetadata, buildHeadersFromAccessToken());
+        final URI url = getDocumentsAccountUri.buildAndExpand(retrieveAccountId(), documentId).toUri();
+        restTemplate.exchange(url, HttpMethod.PUT, entity, String.class);
 
     }
 }

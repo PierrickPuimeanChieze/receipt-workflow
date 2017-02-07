@@ -18,6 +18,7 @@ import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Date;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -29,7 +30,8 @@ public class PublishTask {
 
     private DropboxService dropboxService;
 
-    private String toSentCategory = "to send";
+    @Value("${shoeboxed.toSentCategory}")
+    private String toSentCategory;
 
     @Value("${destinationDirs}")
     private String destinationDir;
@@ -97,8 +99,10 @@ public class PublishTask {
                 copyDocumentToLocal(document, destinationFile);
                 String replace = categorySubDirPath.resolve(destinationFile.getName()).toString().replace("\\", "/");
                 dropboxService.uploadFile(destinationFile, replace, this);
+//                List<String> categories = document.getCategories();
+//                categories.remove(toSentCategory);
+//                shoeboxedService.updateMetadata(document.getId(), categories);
                 manageLog(replace);
-
             } catch (MultipleMainCategoriesException e) {
                 throw new MultipleMainCategoriesException("document " + document + " has Multiple Main Categories. See root cause for detail", e);
             } catch (IOException e) {
@@ -163,7 +167,7 @@ public class PublishTask {
      * @return <code>null</code> if default (no main cateoory), name of the main category
      * @throws MultipleMainCategoriesException if multiple main category were found
      */
-    private String extractMainCategory(String[] categories) throws MultipleMainCategoriesException {
+    private String extractMainCategory(Iterable<String> categories) throws MultipleMainCategoriesException {
         String mainCategoryToReturn = null;
         for (String category : categories) {
             for (String mainCategory : mainCategories) {
@@ -185,7 +189,7 @@ public class PublishTask {
      * @param categories the categories to parse
      * @return the firste destination category
      */
-    private String extractFirstDestinationCategory(String[] categories) {
+    private String extractFirstDestinationCategory(Iterable<String> categories) {
         for (String category : categories) {
             if (!category.equals(this.toSentCategory)) {
                 if (mainCategoriesContains(category)) {
@@ -225,7 +229,7 @@ public class PublishTask {
      * @param categories categories to parse
      * @return type info, or empty value
      */
-    private String extractTypeInfoFromCategory(String[] categories) {
+    private String extractTypeInfoFromCategory(List<String> categories) {
         String propertyMarker = PROPERTY_NAME_TYPE + ":";
         for (String category : categories) {
             if (category.startsWith(propertyMarker)) {

@@ -1,12 +1,15 @@
 package be.cleitech.receipt.shoeboxed.domain;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 
 /**
  * @author Pierrick Puimean-Chieze on 23-04-16.
  */
-
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Document {
 
 
@@ -18,7 +21,8 @@ public class Document {
     private Date uploaded ;
     private String vendor;
     private String notes;
-    private String[] categories;
+    private List<String> categories;
+    private String type;
 
     private String id;
     public Attachment getAttachment() {
@@ -61,11 +65,11 @@ public class Document {
         this.notes = notes;
     }
 
-    public String[] getCategories() {
+    public List<String> getCategories() {
         return categories;
     }
 
-    public void setCategories(String[] categories) {
+    public void setCategories(List<String> categories) {
         this.categories = categories;
     }
 
@@ -90,12 +94,22 @@ public class Document {
         return "Document{" +
                 "attachment=" + attachment +
                 ", total=" + total +
+                ", tax=" + tax +
+                ", currency='" + currency + '\'' +
                 ", issued=" + issued +
-                ", uploaded =" + uploaded  +
+                ", uploaded=" + uploaded +
                 ", vendor='" + vendor + '\'' +
                 ", notes='" + notes + '\'' +
-                ", categories=" + Arrays.toString(categories) +
+                ", categories=" + categories +
                 ", id='" + id + '\'' +
                 '}';
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 }
