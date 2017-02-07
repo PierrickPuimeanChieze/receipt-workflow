@@ -22,7 +22,7 @@ public class ProcessToOcr {
 
     private static Log LOG = LogFactory.getLog(ProcessToOcr.class);
     @Value("${processToOcr.toUploadDirName:to_upload}")
-    private static final String toUploadDirName = "to_upload";
+    private String toUploadDirName;
 
     private ShoeboxedService shoeboxedService;
     private MailManager mailManager;
