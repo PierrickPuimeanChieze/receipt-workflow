@@ -1,5 +1,6 @@
 package be.cleitech.receipt;
 
+import be.cleitech.receipt.dropbox.DropboxService;
 import be.cleitech.receipt.google.GoogleConfiguration;
 import be.cleitech.receipt.shoeboxed.ShoeboxedRestResource;
 import be.cleitech.receipt.shoeboxed.ShoeboxedService;
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.EmbeddedServletContainerAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.WebMvcAutoConfiguration;
 import org.springframework.context.annotation.*;
@@ -22,9 +24,7 @@ import java.io.IOException;
  */
 @Import({GoogleConfiguration.class, ShoeboxedRestResource.class})
 
-@SpringBootApplication
-        (exclude = {EmbeddedServletContainerAutoConfiguration.class,
-                WebMvcAutoConfiguration.class})
+@SpringBootApplication(exclude={DataSourceAutoConfiguration.class})
 public class Application {
 
     final GoogleConfiguration googleConfiguration;
@@ -70,10 +70,22 @@ public class Application {
 
     @Bean
     public ShoeboxedService shoeboxedService() throws IOException, JsonReader.FileLoadException {
-        ShoeboxedService shoeboxedService = new ShoeboxedService(redirectUrl, clientId, clientSecret,shoeboxedProcessingStateForUpload, shoeboxedAccesTokenTile, username, password);
+        ShoeboxedService shoeboxedService = new ShoeboxedService(redirectUrl, clientId, clientSecret, shoeboxedProcessingStateForUpload, shoeboxedAccesTokenTile, username, password);
 
         shoeboxedService.initAccessToken();
         return shoeboxedService;
+    }
+
+    @Bean
+    public DropboxService dropboxService(@Value("${dropbox.uploadPath}")
+                                                 String uploadPath,
+
+                                         @Value("${credentials.directory}/dropboxAcessToken")
+                                                 File accessTokenFile
+    ) {
+        DropboxService dropboxService = new DropboxService(uploadPath, accessTokenFile);
+        dropboxService.initDropboxAccessToken();
+        return dropboxService;
     }
 
 

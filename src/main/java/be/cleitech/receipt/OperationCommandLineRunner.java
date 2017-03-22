@@ -30,18 +30,14 @@ public class OperationCommandLineRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        if (args.length < 1) {
-            //TODO log this shit
-            mailManager.sendErrorMessage(args,"expected process-to-ocr or extract-and-publish");
-            System.exit(1);
-        }
+        if (args.length==0) return;
         String operation = args[0];
         switch (operation) {
             case "process-to-ocr":
                 processToOcr.run(args);
                 System.exit(0);
             case "extract-and-publish":
-                publishTask.run(args);
+                publishTask.retrieveAllFile();
                 System.exit(0);
             case "test-conf":
 
@@ -50,9 +46,6 @@ public class OperationCommandLineRunner implements CommandLineRunner {
                 break;
 
             default:
-                mailManager.sendErrorMessage(args,"Unknown operation " + operation);
-                System.exit(1);
-
         }
     }
 }

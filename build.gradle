@@ -26,6 +26,7 @@ targetCompatibility = 1.8
 dependencies {
     testCompile('org.springframework.boot:spring-boot-starter-test')
     compile('org.springframework.boot:spring-boot-starter')
+    compile("org.springframework.boot:spring-boot-starter-batch")
     compile 'org.springframework.boot:spring-boot-starter-web'//used for the RestTemplate and UriComponentBuilder classes
     compile 'org.springframework.boot:spring-boot-starter-mail'//used for the RestTemplate and UriComponentBuilder classes
     compile 'org.springframework.boot:spring-boot-starter-velocity'//used for the RestTemplate and UriComponentBuilder classes

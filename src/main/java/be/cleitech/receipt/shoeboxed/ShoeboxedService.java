@@ -30,6 +30,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -241,7 +242,7 @@ public class ShoeboxedService implements AuthenticatedService {
      * @param categoryFilter the category of the searched document
      * @return the list of Document
      */
-    public Document[] retrieveDocument(String categoryFilter) {
+    public LinkedList<Document> retrieveDocument(String categoryFilter) {
 
         UriComponentsBuilder getDocumentsAccountUri = UriComponentsBuilder.fromUriString("https://api.shoeboxed.com:443/v2/accounts/{accountId}/documents/")
                 .queryParam("limit", 100)

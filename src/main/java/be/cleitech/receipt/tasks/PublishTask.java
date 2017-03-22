@@ -5,11 +5,12 @@ import be.cleitech.receipt.dropbox.DropboxService;
 import be.cleitech.receipt.shoeboxed.MultipleMainCategoriesException;
 import be.cleitech.receipt.shoeboxed.ShoeboxedService;
 import be.cleitech.receipt.shoeboxed.domain.Document;
-import com.dropbox.core.DbxException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationContext;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.FileCopyUtils;
 
@@ -19,8 +20,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Date;
 import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
 
 @Component
 public class PublishTask {
@@ -46,19 +45,18 @@ public class PublishTask {
     private String[] mainCategories = new String[]{"Diving"};
     private final int maxIndexation = 150;
 
-    private Set<String> fileList = new TreeSet<>();
 
     private ShoeboxedService shoeboxedService;
 
     private MailManager mailManager;
-
+    private ApplicationContext applicationContext;
     @Autowired
-    public PublishTask(DropboxService dropboxService, ShoeboxedService shoeboxedService, MailManager mailManager) {
+    public PublishTask(DropboxService dropboxService, ShoeboxedService shoeboxedService, MailManager mailManager, ApplicationContext applicationContext) {
         this.dropboxService = dropboxService;
         this.shoeboxedService = shoeboxedService;
         this.mailManager = mailManager;
+        this.applicationContext = applicationContext;
     }
-
 
 
     /**
@@ -67,21 +65,27 @@ public class PublishTask {
      * @throws IOException                     Problem when reading or writing a file
      * @throws MultipleMainCategoriesException If one of the files has multiple Main category
      */
-    private void retrieveAllFile() throws IOException, MultipleMainCategoriesException, DbxException, MessagingException {
+    public PublishTaskResult retrieveAllFile() {
+
+        Resource resource = applicationContext.getResource("classpath:/templates/uploadResultViewTemplate.html");
+        PublishTaskResult result = new PublishTaskResult();
 
         String todayPostDir = String.format("postDate_%tF", new Date());
+        final List<Document> documents = shoeboxedService.retrieveDocument(toSentCategory);
 
-        final Document[] documents = shoeboxedService.retrieveDocument(toSentCategory);
+        result.setDocumentsToProceed(documents);
         for (Document document : documents) {
+            String fileName = String.format("%tF_%s_%s%s.pdf",
+                    document.getIssued(),
+                    document.getVendor().replaceAll(" ", ""),
+                    document.getTotal().toString().replace('.', ','),
+                    "_" + extractTypeInfoFromCategory(document.getCategories()));
+            Path categorySubDirPath = Paths.get("");
             try {
-                String fileName = String.format("%tF_%s_%s%s.pdf",
-                        document.getIssued(),
-                        document.getVendor().replaceAll(" ", ""),
-                        document.getTotal().toString().replace('.', ','),
-                        "_" + extractTypeInfoFromCategory(document.getCategories()));
 
-                Path categorySubDirPath = Paths.get("");
+
                 String mainCategory = extractMainCategory(document.getCategories());
+
                 if (mainCategory != null) {
                     categorySubDirPath = categorySubDirPath.resolve(mainCategory);
                 }
@@ -95,37 +99,38 @@ public class PublishTask {
                     subDirTotal.mkdirs();
                 }
 
-                File destinationFile = createDestinationFile(fileName, subDirTotal, null);
-                copyDocumentToLocal(document, destinationFile);
+                File destinationFile = retrieveFileToLocal(document, fileName, subDirTotal);
                 String replace = categorySubDirPath.resolve(destinationFile.getName()).toString().replace("\\", "/");
                 dropboxService.uploadFile(destinationFile, replace, this);
 //                List<String> categories = document.getCategories();
 //                categories.remove(toSentCategory);
 //                shoeboxedService.updateMetadata(document.getId(), categories);
-                manageLog(replace);
-            } catch (MultipleMainCategoriesException e) {
-                throw new MultipleMainCategoriesException("document " + document + " has Multiple Main Categories. See root cause for detail", e);
-            } catch (IOException e) {
-                throw new IOException("Error when trying to recover document " + document, e);
+                result.addSuccessDocument(document, fileName);
+            } catch (Exception e) {
+                LOG.error("Unable to treat file " + fileName + " for document " + document);
+                result.addFailedDocument(document, fileName);
             }
 
-
         }
-        mailManager.sentExtractionResults(fileList);
+        try {
+            mailManager.sentExtractionResults(result.getUploadedFile());
+            result.setMailSent(true);
+        } catch (MessagingException ex) {
+            result.setMailSent(false);
+        }
+        return result;
+
     }
 
-    private void copyDocumentToLocal(Document document, File destinationFile) throws IOException {
+    private File retrieveFileToLocal(Document document, String fileName, File subDirTotal) throws IOException {
+        File destinationFile = createDestinationFile(fileName, subDirTotal, null);
         //TODO eventually, try to pipe the stream directly to Dropbox, no local copy.
         try (final InputStream in = document.getAttachment().getUrl().openStream();
              final FileOutputStream out = new FileOutputStream(destinationFile)) {
             LOG.info("retrieving file " + destinationFile);
             FileCopyUtils.copy(in, out);
         }
-    }
-
-    private void manageLog(String destinationFile) {
-
-        fileList.add(destinationFile);
+        return destinationFile;
     }
 
 
@@ -239,11 +244,6 @@ public class PublishTask {
         return "";
     }
 
-    public void run(String[] args) throws Exception {
-
-        dropboxService.initDropboxAccessToken();
-        retrieveAllFile();
-    }
 
 
 }

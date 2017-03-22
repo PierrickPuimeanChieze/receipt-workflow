@@ -25,7 +25,7 @@ public class DropboxService {
             System.getenv("APPDATA") + "/shoeboxed-toolsuite/dropbox_client_secret.json",
             "~/.shoeboxed-toolsuite/dropbox_client_secret.json"
     };
-    @Value("${dropbox.uploadPath}")
+  //  @Value("${dropbox.uploadPath}")
     private String uploadPath;
 
     private String accessToken;
@@ -34,14 +34,21 @@ public class DropboxService {
 
     private DbxAppInfo appInfo;
 
-    @Value("${credentials.directory}/dropboxAcessToken")
+//    @Value("${credentials.directory}/dropboxAcessToken")
     private File accessTokenFile;
 
-    public void initDropboxAccessToken() throws JsonReader.FileLoadException, IOException {
+    public DropboxService(String uploadPath, File accessTokenFile) {
+        this.uploadPath = uploadPath;
+        this.accessTokenFile = accessTokenFile;
+    }
+
+    public void initDropboxAccessToken() {
         if (!accessTokenFile.exists()) {
             accessToken = retrieveDropBoxAccessToken();
             try (FileWriter fileWriter = new FileWriter(accessTokenFile)) {
                 fileWriter.write(accessToken);
+            } catch (IOException e) {
+                throw new DropboxInitException("Unable to write acces token to " + accessTokenFile);
             }
 
         } else {
@@ -50,6 +57,8 @@ public class DropboxService {
                     BufferedReader bufferedReader = new BufferedReader(fileReader)
             ) {
                 accessToken = bufferedReader.readLine();
+            } catch (IOException e) {
+                throw new DropboxInitException("Unable to read from " + accessTokenFile);
             }
         }
     }
@@ -67,12 +76,16 @@ public class DropboxService {
     }
 
 
-    private String retrieveDropBoxAccessToken() throws JsonReader.FileLoadException, IOException {
+    private String retrieveDropBoxAccessToken() {
         File dropBoxInfoFile = Utils.findConfFile(DROPBOX_SECRET_PATHS);
         if (dropBoxInfoFile == null) {
-            throw new FileNotFoundException("Unable to found dropbox client secret file");
+            throw new DropboxInitException("Unable to found dropbox client secret file");
         }
-        appInfo = DbxAppInfo.Reader.readFromFile(dropBoxInfoFile);
+        try {
+            appInfo = DbxAppInfo.Reader.readFromFile(dropBoxInfoFile);
+        } catch (JsonReader.FileLoadException e) {
+            throw new DropboxInitException("unable to load secret file from" + dropBoxInfoFile);
+        }
 
         DbxRequestConfig requestConfig = new DbxRequestConfig("shoeboxed-toolsuite");
         DbxWebAuth webAuth = new DbxWebAuth(requestConfig, appInfo);
@@ -83,7 +96,12 @@ public class DropboxService {
         String authorizeUrl = webAuth.authorize(webAuthRequest);
         System.out.println("Go to " + authorizeUrl);
         System.out.print("Copy past the code :");
-        String code = new BufferedReader(new InputStreamReader(System.in)).readLine();
+        String code = null;
+        try {
+            code = new BufferedReader(new InputStreamReader(System.in)).readLine();
+        } catch (IOException e) {
+            throw new DropboxInitException("Unable to read code from console");
+        }
         if (code == null) {
             //FIXME : put an exception
             throw new RuntimeException("code==null");
@@ -97,7 +115,7 @@ public class DropboxService {
             throw new RuntimeException("Error in DbxWebAuth.authorize: " + ex.getMessage());
         }
 
-        LOG.info("Authorization complete."+"\n- User ID: " + authFinish.getUserId()+"\n- Access Token: " + authFinish.getAccessToken());
+        LOG.info("Authorization complete." + "\n- User ID: " + authFinish.getUserId() + "\n- Access Token: " + authFinish.getAccessToken());
         return authFinish.getAccessToken();
     }
 }
