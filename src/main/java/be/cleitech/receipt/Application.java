@@ -15,20 +15,21 @@ import org.springframework.boot.autoconfigure.web.EmbeddedServletContainerAutoCo
 import org.springframework.boot.autoconfigure.web.WebMvcAutoConfiguration;
 import org.springframework.context.annotation.*;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.io.File;
 import java.io.IOException;
 
 /**
- * Created by ppc on 1/25/2017.
+ * @author Pierrick Puimean-Chieze on 1/25/2017.
  */
 @Import({GoogleConfiguration.class, ShoeboxedRestResource.class})
 
 @SpringBootApplication(exclude={DataSourceAutoConfiguration.class})
+@EnableScheduling
 public class Application {
 
-    final GoogleConfiguration googleConfiguration;
-    //TODO add shoeboxed prefix
+    private final GoogleConfiguration googleConfiguration;
     @Value("${shoeboxed.redirectUrl}")
     String redirectUrl;
     @Value("${shoeboxed.clientId}")

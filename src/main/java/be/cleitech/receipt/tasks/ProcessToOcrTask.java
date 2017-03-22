@@ -8,6 +8,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import javax.mail.MessagingException;
@@ -18,9 +19,9 @@ import java.util.Collection;
 import java.util.Set;
 
 @Component
-public class ProcessToOcr {
+public class ProcessToOcrTask {
 
-    private static Log LOG = LogFactory.getLog(ProcessToOcr.class);
+    private static Log LOG = LogFactory.getLog(ProcessToOcrTask.class);
     @Value("${processToOcr.toUploadDirName:to_upload}")
     private String toUploadDirName;
 
@@ -33,7 +34,7 @@ public class ProcessToOcr {
     private String uploadedDirName;
 
     @Autowired
-    public ProcessToOcr(
+    public ProcessToOcrTask(
             DriveService googleDriveService,
             ShoeboxedService shoeboxedService,
             MailManager mailManager) {
@@ -42,9 +43,9 @@ public class ProcessToOcr {
         this.mailManager = mailManager;
     }
 
-    public void run(String[] args) throws IOException, MessagingException {
+    @Scheduled(cron = "${processToOcr.schedule:0 0 0 * * ?}")
+    public void run() throws IOException, MessagingException {
 
-        // Print the names and IDs for up to 10 files.
         final String toUploadDirId = googleDriveService.retrieveFileId(toUploadDirName);
         final String uploadedDirId = googleDriveService.retrieveFileId(uploadedDirName);
 
