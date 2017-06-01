@@ -62,6 +62,7 @@ public class ProcessToOcrTask {
         } else {
             Collection<String> publishedFile = new ArrayList<>();
             for (File file : fileToUpload) {
+                LOG.info("trying to download file "+file.getOriginalFilename());
                 Path tempFileName = googleDriveService.downloadTempFile(file.getId(), file.getOriginalFilename());
                 LOG.info("upload " + tempFileName + " to shoeboxed");
                 shoeboxedService.uploadDocument(tempFileName);
