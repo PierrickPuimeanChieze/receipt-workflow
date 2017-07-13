@@ -1,6 +1,16 @@
+#* @vtlvariable name="results" type="java.util.List<be.cleitech.receipt.tasks.ProcessTaskResult>" *#
+#* @vtlvariable name="resultsInError" type="java.util.List<be.cleitech.receipt.tasks.ProcessTaskResult>" *#
 
-Les fichiers suivants ont été publiés vers l'outil d'OCR
+Les fichiers suivants ont été publiés vers l'outil d'OCR :
 
-#foreach ($file in $fileList)
-* $file
+#foreach ($result in $results)
+* $result.fileStoreName
 #end
+
+Les fichiers suivants ont soulevés une erreur :
+
+#foreach ($result in $resultsInError)
+* $result.fileStoreName
+#end
+
+Ces fichiers continueront à être marqué en erreur tant qu'ils ne seront pas retirés manuellement de la source.

@@ -2,6 +2,7 @@ package be.cleitech.receipt.google;
 
 import be.cleitech.receipt.MailManager;
 import be.cleitech.receipt.MailProperties;
+import be.cleitech.receipt.tasks.ProcessTaskResult;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
@@ -22,6 +23,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Created by ppc on 1/26/2017.
@@ -110,12 +112,13 @@ public class GmailService implements MailManager {
     }
 
     @Override
-    public void sentPublishOcrProcess(Collection<String> fileList) throws MessagingException {
+    public void sentPublishOcrProcess(Collection<ProcessTaskResult> fileList) throws MessagingException {
         String text = "Publish Ocr - No File To upload";
         if (fileList != null) {
             Map<String, Object> model = new HashMap<>();
-            model.put("fileList", fileList);
-
+            Map<Boolean, List<ProcessTaskResult>> partitioningResults = fileList.stream().collect(Collectors.partitioningBy(ProcessTaskResult::isInError));
+            model.put("results", partitioningResults.get(false));
+            model.put("resultsInError", partitioningResults.get(true));
             text = VelocityEngineUtils.mergeTemplateIntoString(
                     velocityEngine, "publishOcr.mailTemplate.vm", "UTF-8", model);
 
@@ -125,7 +128,7 @@ public class GmailService implements MailManager {
     }
 
     private void sentMail(String text, MailProperties.MailInfo publishOcr) throws MessagingException {
-        LOG.debug("send Message with body "+text+" and info "+publishOcr);
+        LOG.debug("send Message with body " + text + " and info " + publishOcr);
         try {
             MimeMessage email = createEmail(
                     publishOcr.to,
@@ -135,7 +138,7 @@ public class GmailService implements MailManager {
             Message message = createMessageWithEmail(email);
             Message sentMessage = gmail.users().messages().send("me", message).execute();
             LOG.debug("Message id: " + sentMessage.getId());
-            LOG.debug("Message pretty String : "+sentMessage.toPrettyString());
+            LOG.debug("Message pretty String : " + sentMessage.toPrettyString());
         } catch (IOException e) {
             throw new MessagingException("mail error", e);
         }

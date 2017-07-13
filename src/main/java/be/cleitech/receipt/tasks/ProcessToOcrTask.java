@@ -16,8 +16,13 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 
+/**
+ * This task allow to extract the file from the initial file store (for the moment, only Google drive) and sent them to
+ * the processing service (for the moment, only Dropbox)
+ */
 @Component
 public class ProcessToOcrTask {
 
@@ -54,24 +59,36 @@ public class ProcessToOcrTask {
 
     }
 
-    private void handleFiles(String toUploadDirId, String uploadedDirId, Collection<File> fileToUpload, ShoeboxedService shoeboxedService) throws IOException, MessagingException {
+    private List<ProcessTaskResult> handleFiles(String toUploadDirId, String uploadedDirId, Collection<File> fileToUpload, ShoeboxedService shoeboxedService) throws IOException, MessagingException {
 
+        List<ProcessTaskResult> results = new ArrayList<>();
         if (fileToUpload == null || fileToUpload.size() == 0) {
             LOG.info("No file to sent to OCR");
             mailManager.sentPublishOcrProcess(null);
         } else {
             Collection<String> publishedFile = new ArrayList<>();
             for (File file : fileToUpload) {
-                LOG.info("trying to download file "+file.getOriginalFilename());
-                Path tempFileName = googleDriveService.downloadTempFile(file.getId(), file.getOriginalFilename());
-                LOG.info("upload " + tempFileName + " to shoeboxed");
-                shoeboxedService.uploadDocument(tempFileName);
-                LOG.info("move file " + file.getOriginalFilename() + " from "+ toUploadDirName +"to dir " + uploadedDirName);
-                googleDriveService.moveFileToUploadedDir(file.getId(), toUploadDirId, uploadedDirId);
-                publishedFile.add(file.getOriginalFilename());
+                ProcessTaskResult result = new ProcessTaskResult();
+                try {
+                    LOG.info("trying to download file " + file.getOriginalFilename());
+                    result.setFileStoreName(file.getOriginalFilename());
+                    Path tempFileName = googleDriveService.downloadTempFile(file.getId(), file.getOriginalFilename());
+                    result.setTempFileName(tempFileName);
+                    LOG.info("upload " + tempFileName + " to shoeboxed");
+                    shoeboxedService.uploadDocument(tempFileName);
+                    LOG.info("move file " + file.getOriginalFilename() + " from " + toUploadDirName + "to dir " + uploadedDirName);
+
+                    googleDriveService.moveFileToUploadedDir(file.getId(), toUploadDirId, uploadedDirId);
+                    publishedFile.add(file.getOriginalFilename());
+                } catch (Exception e) {
+                    result.setErrorMessage(e.getMessage());
+                    LOG.error("unable to process file", e);
+                }
+                results.add(result);
             }
-            mailManager.sentPublishOcrProcess(publishedFile);
+            mailManager.sentPublishOcrProcess(results);
         }
+        return results;
     }
 
 

@@ -1,5 +1,7 @@
 package be.cleitech.receipt;
 
+import be.cleitech.receipt.tasks.ProcessTaskResult;
+
 import javax.mail.MessagingException;
 import java.util.Collection;
 
@@ -9,6 +11,6 @@ import java.util.Collection;
 public interface MailManager {
     void sentExtractionResults(Collection<String> fileList) throws MessagingException;
 
-    void sentPublishOcrProcess(Collection<String> fileList) throws MessagingException;
+    void sentPublishOcrProcess(Collection<ProcessTaskResult> fileList) throws MessagingException;
     void sendErrorMessage(String[] operationArgs, String errorContent) throws MessagingException;
 }
