@@ -20,7 +20,7 @@ repositories {
 }
 
 group = "be.cleitech.shoeboxed"
-version = "0.1.1.SNAPSHOT"
+version = "0.1.1"
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
