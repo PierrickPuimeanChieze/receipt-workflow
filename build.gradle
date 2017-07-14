@@ -10,6 +10,11 @@ plugins {
     id 'org.springframework.boot' version '1.5.4.RELEASE'
 }
 
+if (project.hasProperty('buildExecutableJar') && project.getProperty('buildExecutableJar') == 'true') {
+    println("Will make the jar an executable one")
+    apply from: 'gradle/executable.gradle'
+}
+
 repositories {
     mavenCentral()
 }
@@ -45,4 +50,3 @@ dependencies {
     compile 'org.springframework.boot:spring-boot-starter-security'
     compile 'org.springframework.security.oauth:spring-security-oauth2'
 }
-
