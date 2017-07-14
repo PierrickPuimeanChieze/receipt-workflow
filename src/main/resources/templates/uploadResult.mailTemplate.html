@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+</head>
+<body>
+<p>
+    Bonjour,
+</p>
+<p>
+    Vous trouverez dans le repertoire IN de DropBox une serie de fichiers, avec les noms suivants :
+</p>
+<ul th:each="file : ${fileList}">
+    <li th:text="${file}">Example file</li>
+</ul>
+<p>
+    Bien à vous,
+    Pierrick Puimean-Chieze
+</p>
+</body>

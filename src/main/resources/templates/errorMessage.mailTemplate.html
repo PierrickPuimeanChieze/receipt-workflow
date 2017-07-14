@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org">
+<!--/*@thymesVar id="operationArgs" type="java.lang.String"*/-->
+<!--/*@thymesVar id="errorContent" type="java.lang.String"*/-->
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+</head>
+
+<body>
+    Une erreur est survenue durant une operation :
+
+<ul>
+    <li>Arguments :
+    <span th:text="${operationArgs}"> operationArgs </span></li>
+    <li>Error : <span th:text="${errorContent}"> errorContent </span></li>
+</ul>
+
+</body>
+
+</html>
+

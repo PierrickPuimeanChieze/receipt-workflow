@@ -6,14 +6,13 @@ import be.cleitech.receipt.tasks.ProcessTaskResult;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.Base64;
 import com.google.api.services.gmail.Gmail;
 import com.google.api.services.gmail.model.Message;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.velocity.app.VelocityEngine;
-import org.springframework.ui.velocity.VelocityEngineUtils;
+import org.thymeleaf.context.Context;
+import org.thymeleaf.spring4.SpringTemplateEngine;
 
 import javax.mail.MessagingException;
 import javax.mail.Session;
@@ -34,16 +33,16 @@ public class GmailService implements MailManager {
     private static Log LOG = LogFactory.getLog(GmailService.class);
     private final Gmail gmail;
     private final MailProperties mailProperties;
-    private VelocityEngine velocityEngine;
+    private SpringTemplateEngine thymeleafEngine;
 
 
     public GmailService(
 
             HttpTransport httpTransport,
             Credential credential,
-            JsonFactory jsonFactory, VelocityEngine velocityEngine, String applicationName,
-            MailProperties mailProperties) throws GeneralSecurityException, IOException {
-        this.velocityEngine = velocityEngine;
+            JsonFactory jsonFactory, String applicationName,
+            SpringTemplateEngine thymeleafEngine, MailProperties mailProperties) throws GeneralSecurityException, IOException {
+        this.thymeleafEngine = thymeleafEngine;
 
         gmail = new Gmail.Builder(httpTransport, jsonFactory, credential)
                 .setApplicationName(applicationName)
@@ -99,15 +98,17 @@ public class GmailService implements MailManager {
         email.addRecipient(javax.mail.Message.RecipientType.CC,
                 new InternetAddress(cc));
         email.setText(bodyText);
+        email.setContent(bodyText, "text/html; charset=utf-8");
         return email;
     }
 
     public void sentExtractionResults(Collection<String> fileList) throws MessagingException {
 
+        Context context = new Context();
+        context.setVariable("fileList", fileList);
         Map<String, Object> model = new HashMap<>();
         model.put("fileList", fileList);
-        String text = VelocityEngineUtils.mergeTemplateIntoString(
-                velocityEngine, "uploadResult.mailTemplate.vm", "UTF-8", model);
+        String text = thymeleafEngine.process("uploadResult.mailTemplate", context);
         sentMail(text, mailProperties.getUploadResult());
     }
 
@@ -119,8 +120,9 @@ public class GmailService implements MailManager {
             Map<Boolean, List<ProcessTaskResult>> partitioningResults = fileList.stream().collect(Collectors.partitioningBy(ProcessTaskResult::isInError));
             model.put("results", partitioningResults.get(false));
             model.put("resultsInError", partitioningResults.get(true));
-            text = VelocityEngineUtils.mergeTemplateIntoString(
-                    velocityEngine, "publishOcr.mailTemplate.vm", "UTF-8", model);
+            Context context = new Context();
+            context.setVariables(model);
+            text = thymeleafEngine.process("publishOcr.mailTemplate", context);
 
         }
         MailProperties.MailInfo publishOcr = mailProperties.getPublishOcr();
@@ -149,8 +151,9 @@ public class GmailService implements MailManager {
         Map<String, Object> model = new HashMap<>();
         model.put("operationArgs", args);
         model.put("errorContent", errorContent);
-        String text = VelocityEngineUtils.mergeTemplateIntoString(
-                velocityEngine, "errorMessage.mailTemplate.vm", "UTF-8", model);
+        String text = "";
+//        String text = VelocityEngineUtils.mergeTemplateIntoString(
+//                velocityEngine, "errorMessage.mailTemplate.html", "UTF-8", model);
         sentMail(text, mailProperties.getErrorMessage());
     }
 }

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+</head>
+
+<body>
+<p>
+    Fichier envoyés :
+</p>
+<!--/*@thymesVar id="result" type="be.cleitech.receipt.tasks.PublishTaskResult"*/-->
+<ul th:each="file : ${result.uploadedFile}">
+
+    <li th:text="${file}"> $file</li>
+</ul>
+<p>
+    Erreur :
+</p>
+<ul th:each="file : ${result.errorFile}">
+
+    <li th:text="${file}"> $file</li>
+</ul>
+</body>
+</html>
+

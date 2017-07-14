@@ -30,6 +30,10 @@ public class ProcessToOcrTask {
     @Value("${processToOcr.toUploadDirName:to_upload}")
     private String toUploadDirName;
 
+    @Value("${processToOcr.sendToOcrService:true}")
+    private Boolean sendToOcrService;
+    @Value("${processToOcr.moveToUploadDir:true}")
+    private Boolean moveToUploadDir;
     private ShoeboxedService shoeboxedService;
     private MailManager mailManager;
 
@@ -66,20 +70,22 @@ public class ProcessToOcrTask {
             LOG.info("No file to sent to OCR");
             mailManager.sentPublishOcrProcess(null);
         } else {
-            Collection<String> publishedFile = new ArrayList<>();
             for (File file : fileToUpload) {
                 ProcessTaskResult result = new ProcessTaskResult();
                 try {
-                    LOG.info("trying to download file " + file.getOriginalFilename());
                     result.setFileStoreName(file.getOriginalFilename());
-                    Path tempFileName = googleDriveService.downloadTempFile(file.getId(), file.getOriginalFilename());
-                    result.setTempFileName(tempFileName);
-                    LOG.info("upload " + tempFileName + " to shoeboxed");
-                    shoeboxedService.uploadDocument(tempFileName);
-                    LOG.info("move file " + file.getOriginalFilename() + " from " + toUploadDirName + "to dir " + uploadedDirName);
+                    if (sendToOcrService) {
+                        LOG.info("trying to download file " + file.getOriginalFilename());
+                        Path tempFileName = googleDriveService.downloadTempFile(file.getId(), file.getOriginalFilename());
+                        result.setTempFileName(tempFileName);
+                        LOG.info("upload " + tempFileName + " to shoeboxed");
+                        shoeboxedService.uploadDocument(tempFileName);
+                    }
 
-                    googleDriveService.moveFileToUploadedDir(file.getId(), toUploadDirId, uploadedDirId);
-                    publishedFile.add(file.getOriginalFilename());
+                    if (moveToUploadDir) {
+                        LOG.info("move file " + file.getOriginalFilename() + " from " + toUploadDirName + "to dir " + uploadedDirName);
+                        googleDriveService.moveFileToUploadedDir(file.getId(), toUploadDirId, uploadedDirId);
+                    }
                 } catch (Exception e) {
                     result.setErrorMessage(e.getMessage());
                     LOG.error("unable to process file", e);

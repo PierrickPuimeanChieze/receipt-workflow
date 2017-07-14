@@ -14,13 +14,12 @@ import com.google.api.client.util.store.DataStoreFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.gmail.GmailScopes;
-import org.apache.velocity.app.VelocityEngine;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
+import org.thymeleaf.spring4.SpringTemplateEngine;
 
 import java.io.File;
 import java.io.FileReader;
@@ -43,19 +42,19 @@ public class GoogleConfiguration {
 
     @Value("${spring.application.name")
     private String applicationName;
+    private SpringTemplateEngine thymeleafEngine;
 
-    final VelocityEngine velocityEngine;
 
     @Autowired
-    public GoogleConfiguration(MailProperties mailProperties, VelocityEngine velocityEngine) {
+    public GoogleConfiguration(MailProperties mailProperties, SpringTemplateEngine thymeleafEngine) {
         this.mailProperties = mailProperties;
-        this.velocityEngine = velocityEngine;
+        this.thymeleafEngine = thymeleafEngine;
     }
 
     @Bean
     public GmailService gmailService() throws GeneralSecurityException, IOException {
         return new GmailService(httpTransport(), googleCredentials(), jsonFactory(),
-                velocityEngine, applicationName, mailProperties);
+                applicationName, thymeleafEngine, mailProperties);
     }
 
     private HttpTransport httpTransport() throws GeneralSecurityException, IOException {

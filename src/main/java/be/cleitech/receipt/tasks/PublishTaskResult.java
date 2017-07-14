@@ -41,6 +41,10 @@ public class PublishTaskResult {
         this.mailSent = mailSent;
     }
 
+    public LinkedList<String> getErrorFile() {
+        return errorFile;
+    }
+
     public boolean isMailSent() {
         return mailSent;
     }

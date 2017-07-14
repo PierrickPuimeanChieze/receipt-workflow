@@ -7,7 +7,7 @@ buildscript {
 
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '1.4.4.RELEASE'
+    id 'org.springframework.boot' version '1.5.4.RELEASE'
 }
 
 repositories {
@@ -30,7 +30,8 @@ dependencies {
     compile("org.springframework.boot:spring-boot-starter-batch")
     compile 'org.springframework.boot:spring-boot-starter-web'//used for the RestTemplate and UriComponentBuilder classes
     compile 'org.springframework.boot:spring-boot-starter-mail'//used for the RestTemplate and UriComponentBuilder classes
-    compile 'org.springframework.boot:spring-boot-starter-velocity'//used for the RestTemplate and UriComponentBuilder classes
+    compile 'org.springframework.boot:spring-boot-starter-thymeleaf'//used for the RestTemplate and UriComponentBuilder classes
+//    compile 'org.springframework.boot:spring-boot-starter-velocity'//used for the RestTemplate and UriComponentBuilder classes
     compile 'org.springframework:spring-context-support'//used for the RestTemplate and UriComponentBuilder classes
 
     compile 'com.google.api-client:google-api-client:1.22.0'
@@ -41,7 +42,6 @@ dependencies {
     compile 'com.machinepublishers:jbrowserdriver:0.17.3'
     compile 'com.google.code.gson:gson:2.6.2'
     compile 'com.dropbox.core:dropbox-core-sdk:3.0.3'
-    compile 'org.apache.velocity:velocity'
     compile 'org.springframework.boot:spring-boot-starter-security'
     compile 'org.springframework.security.oauth:spring-security-oauth2'
 }
